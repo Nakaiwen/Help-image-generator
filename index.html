@@ -1,0 +1,3597 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Help 圖自動產生器 v1.6.0</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root {
+  --bg: #111827;
+  --sidebar-bg: #0f172a;
+  --card-bg: #1e293b;
+  --input-bg: #0f1c2e;
+  --accent: #f59e0b;
+  --accent2: #ef4444;
+  --blue: #3b82f6;
+  --success: #10b981;
+  --text: #e2e8f0;
+  --text-muted: #64748b;
+  --border: #1e3a5f;
+  --sidebar-w: 360px;
+  --font: 'Segoe UI', system-ui, sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); display: flex; }
+
+/* ── SIDEBAR ─────────────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.sidebar-header {
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(135deg, #1a2744 0%, #0f172a 100%);
+  flex-shrink: 0;
+}
+.sidebar-header h1 { font-size: 13px; font-weight: 700; color: var(--accent); letter-spacing: .4px; }
+.sidebar-header p  { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.sidebar-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 10px 20px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.sidebar-scroll::-webkit-scrollbar { width: 4px; }
+.sidebar-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* SECTIONS */
+.sec {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+.sec-hd {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--text-muted);
+  background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer; user-select: none;
+}
+.sec-hd .arrow { transition: transform .2s; }
+.sec.closed .arrow { transform: rotate(-90deg); }
+.sec.closed .sec-bd { display: none; }
+.sec-bd { padding: 10px 12px; }
+
+/* FILE INPUTS */
+.file-row { margin-bottom: 8px; }
+.file-row > span { display: block; font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+.file-btn {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--input-bg); border: 1px solid var(--border); border-radius: 6px;
+  padding: 7px 10px; cursor: pointer; width: 100%; color: var(--text);
+  font-size: 12px; transition: border-color .15s;
+}
+.file-btn:hover { border-color: var(--accent); }
+.file-btn.ok  { border-color: var(--success); }
+.file-btn .ico { font-size: 15px; flex-shrink: 0; }
+.file-btn .lbl { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); font-size: 11px; }
+.file-btn.ok .lbl { color: var(--success); }
+.file-btn input { display: none; }
+
+/* TOKEN LIST */
+.tok-item { display: flex; align-items: center; gap: 7px; padding: 3px 0; font-size: 11px; border-bottom: 1px solid rgba(255,255,255,.04); }
+.tok-item:last-child { border: none; }
+.tok-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border); flex-shrink: 0; }
+.tok-dot.ok  { background: var(--success); }
+.tok-dot.no  { background: var(--accent2); }
+.tok-name { color: #fbbf24; font-family: monospace; flex: 1; }
+.tok-file { color: var(--text-muted); font-size: 10px; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+
+/* PAGE LIST */
+.pg-item {
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 8px; border-radius: 5px; cursor: pointer;
+  font-size: 11px; transition: background .1s; margin-bottom: 1px;
+}
+.pg-item:hover { background: rgba(255,255,255,.05); }
+.pg-item.cur { background: rgba(245,158,11,.15); border-left: 3px solid var(--accent); padding-left: 5px; }
+.pg-num { font-size: 10px; color: var(--text-muted); min-width: 22px; }
+.pg-ttl { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pg-tok { font-size: 10px; color: #fbbf24; font-family: monospace; }
+
+/* SLIDERS */
+.sl-row { margin-bottom: 10px; }
+.sl-row label { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+.sl-row label b { color: var(--accent); font-weight: 700; }
+input[type=range] { width: 100%; accent-color: var(--accent); height: 4px; cursor: pointer; }
+.toggle-row { display: flex; align-items: center; justify-content: space-between; font-size: 11px; padding: 4px 0; }
+.tog { position: relative; width: 34px; height: 18px; flex-shrink: 0; }
+.tog input { opacity: 0; width: 0; height: 0; }
+.tog-sl { position: absolute; inset: 0; background: var(--border); border-radius: 18px; cursor: pointer; transition: .2s; }
+.tog-sl::before { content: ''; position: absolute; width: 12px; height: 12px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: .2s; }
+.tog input:checked ~ .tog-sl { background: var(--accent); }
+.tog input:checked ~ .tog-sl::before { transform: translateX(16px); }
+
+/* BUTTONS */
+.btn { display: block; width: 100%; padding: 8px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 12px; font-weight: 700; letter-spacing: .4px; transition: opacity .15s, transform .1s; margin-bottom: 6px; }
+.btn:hover { opacity: .85; }
+.btn:active { transform: scale(.98); }
+.btn:disabled { opacity: .3; cursor: not-allowed; }
+.btn-amber  { background: var(--accent); color: #0f172a; }
+.btn-ghost  { background: transparent; color: var(--text); border: 1px solid var(--border); }
+.btn-red    { background: var(--accent2); color: white; }
+.btn-blue   { background: var(--blue); color: white; }
+.btn-last { margin-bottom: 0; }
+
+/* ── PREVIEW PANEL ───────────────────────────────────── */
+.preview-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.prev-top {
+  height: 50px; border-bottom: 1px solid var(--border);
+  background: var(--sidebar-bg); display: flex; align-items: center;
+  padding: 0 14px; gap: 12px; flex-shrink: 0;
+}
+.nav-btn {
+  background: var(--card-bg); border: 1px solid var(--border); color: var(--text);
+  border-radius: 6px; padding: 5px 14px; cursor: pointer; font-size: 12px; font-weight: 700;
+  transition: background .15s;
+}
+.nav-btn:hover:not(:disabled) { background: var(--accent); color: #0f172a; }
+.nav-btn:disabled { opacity: .3; cursor: default; }
+.pg-info { flex: 1; text-align: center; }
+.pg-info-title { font-size: 14px; font-weight: 700; color: var(--accent); }
+.pg-info-sub   { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.prev-area {
+  flex: 1; overflow: auto; display: flex; align-items: center; justify-content: center;
+  padding: 20px; background: #0a0f1a;
+}
+#helpCanvas {
+  display: block; max-width: 100%; height: auto;
+  box-shadow: 0 8px 48px rgba(0,0,0,.85); border-radius: 2px;
+}
+.empty-state { text-align: center; color: var(--text-muted); pointer-events: none; }
+.empty-state .eico { font-size: 52px; margin-bottom: 12px; opacity: .3; }
+.empty-state p { font-size: 13px; }
+.prev-bot {
+  height: 46px; border-top: 1px solid var(--border); background: var(--sidebar-bg);
+  display: flex; align-items: center; padding: 0 14px; gap: 10px; flex-shrink: 0;
+}
+.status { flex: 1; font-size: 11px; color: var(--text-muted); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bot-btn {
+  background: var(--card-bg); border: 1px solid var(--border); color: var(--text);
+  border-radius: 5px; padding: 5px 12px; cursor: pointer; font-size: 11px; font-weight: 700;
+  transition: background .15s;
+}
+.bot-btn:hover { background: var(--blue); color: white; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ SIDEBAR ═══════════════════ -->
+<div class="sidebar">
+  <div class="sidebar-header">
+    <h1>⚡ Help 圖自動產生器</h1>
+    <p>v1.6.0</p>
+  </div>
+  <div class="sidebar-scroll">
+
+    <!-- FILE IMPORTS -->
+    <div class="sec" id="secFiles">
+      <div class="sec-hd" onclick="toggle('secFiles')">📁 檔案匯入 <span class="arrow">▾</span></div>
+      <div class="sec-bd">
+        <div class="file-row">
+          <span>Help 文件（Excel）</span>
+          <label class="file-btn" id="bExcel">
+            <span class="ico">📊</span>
+            <span class="lbl" id="nExcel">選取 .xlsx / .xls</span>
+            <input type="file" accept=".xlsx,.xls,.csv" onchange="handleExcel(this)">
+          </label>
+        </div>
+        <div class="file-row">
+          <span>Help 底圖（1920×1080）</span>
+          <label class="file-btn" id="bBg">
+            <span class="ico">🖼️</span>
+            <span class="lbl" id="nBg">選取底圖圖片</span>
+            <input type="file" accept="image/*" onchange="handleBg(this)">
+          </label>
+        </div>
+        <div class="file-row">
+          <span>Logo</span>
+          <label class="file-btn" id="bLogo">
+            <span class="ico">🏷️</span>
+            <span class="lbl" id="nLogo">選取 Logo 圖片</span>
+            <input type="file" accept="image/*" onchange="handleLogo(this)">
+          </label>
+        </div>
+        <div class="file-row">
+          <span>小圖示資料夾</span>
+          <label class="file-btn" id="bIcons">
+            <span class="ico">🗂️</span>
+            <span class="lbl" id="nIcons">選取圖示資料夾</span>
+            <input type="file" multiple webkitdirectory accept=".png,.jpg,.jpeg,.webp" onchange="handleIcons(this)">
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXPORT (moved up) -->
+    <div class="sec" id="secExport">
+      <div class="sec-hd" onclick="toggle('secExport')">💾 匯出 <span class="arrow">▾</span></div>
+      <div class="sec-bd">
+        <!-- Row 1: PNG outputs -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+          <button class="btn btn-amber" style="margin:0;font-size:11px;padding:7px 6px" onclick="exportCurrent()">📄 目前頁 PNG</button>
+          <button class="btn btn-blue"  style="margin:0;font-size:11px;padding:7px 6px" onclick="exportAll()">📦 全部 ZIP</button>
+        </div>
+        <!-- Row 2: JSON persistence -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+          <button class="btn btn-ghost" style="margin:0;font-size:11px;padding:7px 6px" onclick="exportJSON()">💾 存 JSON</button>
+          <label class="btn btn-ghost" style="margin:0;font-size:11px;padding:7px 6px;cursor:pointer;text-align:center">
+            📂 載入 JSON<input type="file" accept=".json" style="display:none" onchange="importJSON(this)">
+          </label>
+        </div>
+        <!-- Row 3: Clipping detector + Diff -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <button class="btn btn-red" style="margin:0;font-size:11px;padding:7px 6px" onclick="checkAllPages()">🔍 偵測掉字</button>
+          <button class="btn btn-blue" style="margin:0;font-size:11px;padding:7px 6px" onclick="openDiffPanel()">🔄 企劃文件更新校對</button>
+        </div>
+        <!-- Compact mode toggle -->
+        <button id="btnCompact" class="btn btn-ghost" style="margin-top:6px;font-size:11px;padding:7px 6px;width:100%;border:1px dashed var(--border)" onclick="toggleCompact()">📐 緊湊模式：關</button>
+        <p id="compactHint" style="display:none;font-size:10px;color:#f59e0b;margin-top:4px;line-height:1.5">字體 20pt・行距 1.7・不影響原設定</p>
+        <p style="font-size:10px;color:var(--text-muted);margin-top:6px;line-height:1.5">
+          ⚠️ JSON 儲存文字與設定，圖片需重新選取。
+        </p>
+      </div>
+    </div>
+
+    <!-- ASSET CHECK -->
+    <div class="sec" id="secAssets">
+      <div class="sec-hd" onclick="toggle('secAssets')">🔍 素材對應 <span class="arrow">▾</span></div>
+      <div class="sec-bd">
+        <div id="tokenList"><p style="font-size:11px;color:var(--text-muted)">匯入 Excel 後顯示</p></div>
+      </div>
+    </div>
+
+    <!-- PAGE LIST -->
+    <div class="sec" id="secPages">
+      <div class="sec-hd" onclick="toggle('secPages')">📄 頁面列表 <span class="arrow">▾</span></div>
+      <div class="sec-bd" style="padding:6px">
+        <div id="pageList"><p style="font-size:11px;color:var(--text-muted);padding:4px">匯入 Excel 後顯示</p></div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="sec" id="secSettings">
+      <div class="sec-hd" onclick="toggle('secSettings')">⚙️ 版面微調 <span class="arrow">▾</span></div>
+      <div class="sec-bd">
+        <div class="sl-row">
+          <label>內容區下移安全值 <b id="vOffset">60</b> px</label>
+          <input type="range" min="0" max="180" value="60" oninput="setSetting('contentOffset',this.value,'vOffset')">
+        </div>
+        <div class="sl-row">
+          <label>大圖與標題距離 <b id="vHeroGap">40</b> px</label>
+          <input type="range" min="0" max="120" value="40" oninput="setSetting('heroGap',this.value,'vHeroGap')">
+        </div>
+        <div class="sl-row">
+          <label>大圖尺寸 <b id="vHeroSize">180</b> px</label>
+          <input type="range" min="60" max="420" value="180" oninput="setSetting('heroSize',this.value,'vHeroSize')">
+        </div>
+        <div class="sl-row">
+          <label>大圖 Y 微調 <b id="vHeroY">0</b> px</label>
+          <input type="range" min="-100" max="100" value="0" oninput="setSetting('heroY',this.value,'vHeroY')">
+        </div>
+        <div class="sl-row">
+          <label>規則文字大小 <b id="vFontSize">23</b> pt</label>
+          <input type="range" min="12" max="32" value="23" oninput="setSetting('ruleFontSize',this.value,'vFontSize')">
+        </div>
+        <hr style="border:none;border-top:1px solid var(--border);margin:8px 0">
+        <div class="toggle-row">
+          <span>顯示安全框（預覽用）</span>
+          <label class="tog"><input type="checkbox" id="togSafe" onchange="setSetting('showSafe',this.checked)"><span class="tog-sl"></span></label>
+        </div>
+        <div class="toggle-row">
+          <span>顯示頁首 / 頁尾區域</span>
+          <label class="tog"><input type="checkbox" id="togAreas" onchange="setSetting('showAreas',this.checked)"><span class="tog-sl"></span></label>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════ PREVIEW ═══════════════════ -->
+<div class="preview-panel">
+  <div class="prev-top">
+    <button class="nav-btn" id="btnPrev" onclick="navPage(-1)" disabled>◀ 上一頁</button>
+    <div class="pg-info">
+      <div class="pg-info-title" id="pgTitle">—</div>
+      <div class="pg-info-sub"  id="pgSub">尚未匯入文件</div>
+    </div>
+    <button class="nav-btn" id="btnNext" onclick="navPage(1)" disabled>下一頁 ▶</button>
+  </div>
+
+  <div class="prev-area" id="prevArea">
+    <div class="empty-state" id="emptyState">
+      <div class="eico">🖼️</div>
+      <p>請匯入 Excel 文件與底圖</p>
+    </div>
+    <canvas id="helpCanvas" width="1920" height="1080" style="display:none"></canvas>
+  </div>
+
+  <div class="prev-bot">
+    <button class="bot-btn" onclick="exportCurrent()">💾 匯出此頁</button>
+    <span class="status" id="statusBar">準備就緒</span>
+    <button class="bot-btn" onclick="exportAll()">📦 全部匯出</button>
+  </div>
+</div>
+
+<!-- ═══════════════════ SCRIPT ═══════════════════ -->
+<script>
+// ─────────────────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────────────────
+const S = {
+  pages: [],
+  cur: 0,
+  assets: { bg: null, logo: null, icons: {}, iconNames: {} },
+  clippedPages:     new Set(),   // page indices with detected clipping
+  clippingDetected: false,       // set true by drawRules/drawRulesReturn during audit
+  compactMode:      false,       // compact mode: smaller font + tighter line height
+  cfg: {
+    contentOffset: 60,
+    heroGap: 40,
+    heroSize: 180,
+    heroY: 0,
+    ruleFontSize: 23,
+    showSafe: false,
+    showAreas: false,
+  },
+  usedTokens: new Set(),
+};
+
+// ─────────────────────────────────────────────────────────
+// CANVAS LAYOUT (1920 × 1080)
+// Based on reference image analysis:
+//   Header:  y=32~110   (above content box)
+//   Box:     y=112~808
+//   Footer:  y=828~968  (GAME INTERRUPTION text)
+//   Buttons: y=985~1043 (前一頁 / Return to Game / 後一頁)
+//   Logo:    bottom-right y=940~1060
+// ─────────────────────────────────────────────────────────
+const L = {
+  W: 1920, H: 1080,
+  SAFE_X: 72,
+  SAFE_Y: 137,         // header strip ends here, main content begins
+  SAFE_W: 1776,
+  SAFE_H: 671,
+  HDR_Y: 32,           // header text top
+  FTR_TOP: 853,        // footer text top (approximate)
+  FTR_BOT: 968,        // footer text bottom — buttons start below here
+  BTN_Y: 1014,         // Return to Game button centre Y
+  BTN_H: 58,
+  LOGO_R: 1902,
+  LOGO_T: 942,
+  LOGO_MAX_H: 112,
+  // Derived: content must end at least this many px above the button top
+  BTN_MARGIN: 48,      // increased from 14 → 48px gap between last text and button
+};
+
+// ─────────────────────────────────────────────────────────
+// UTILS
+// ─────────────────────────────────────────────────────────
+const norm = s => s.toLowerCase().replace(/[\s\-_.]/g, '');
+const esc  = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const toStr = v => (v === null || v === undefined) ? '' : String(v).trim();
+
+function parseTitle(raw) {
+  // Full-width ［ ］ = U+FF3B U+FF3D, half-width [ ]
+  const re = /^(.*?)\s*[\u005B\uFF3B]([^\u005D\uFF3D]+)[\u005D\uFF3D]\s*$/;
+  const m = raw.match(re);
+  if (m) return { titleText: m[1].trim(), heroToken: m[2].trim() };
+  const re2 = /^[\u005B\uFF3B]([^\u005D\uFF3D]+)[\u005D\uFF3D]$/;
+  const m2 = raw.match(re2);
+  if (m2) return { titleText: '', heroToken: m2[1].trim() };
+  return { titleText: raw.trim(), heroToken: '' };
+}
+
+// Parse a text line into renderable segments
+function parseSegments(line) {
+  const segs = [];
+  // token: [name] or ［name］
+  // numBrace: {15} or ｛15｝
+  // number: standalone digits (possibly with X/x)
+  const re = /[\u005B\uFF3B]([^\u005D\uFF3D]+)[\u005D\uFF3D]|[\u007B\uFF5B](\d+)[\u007D\uFF5D]|(\b\d+(?:[xX倍])?\b)/g;
+  let li = 0, m;
+  while ((m = re.exec(line)) !== null) {
+    if (m.index > li) segs.push({ t: 'txt', v: line.slice(li, m.index) });
+    if (m[1] !== undefined) {
+      segs.push({ t: 'tok', v: m[1].trim() });
+      S.usedTokens.add(m[1].trim());
+    } else if (m[2] !== undefined) {
+      segs.push({ t: 'nbr', v: m[2] });
+    } else if (m[3] !== undefined) {
+      segs.push({ t: 'num', v: m[3] });
+    }
+    li = re.lastIndex;
+  }
+  if (li < line.length) segs.push({ t: 'txt', v: line.slice(li) });
+  return segs;
+}
+
+function getIcon(token) { return S.assets.icons[norm(token)] || null; }
+function getIconFile(token) { return S.assets.iconNames[norm(token)] || null; }
+
+// ─────────────────────────────────────────────────────────
+// EXCEL PARSING  (v1.5.0)
+// ─────────────────────────────────────────────────────────
+// Page = { group, header[], footer[], sections[] }
+// Section = { title, heroToken, subHeader[], rules[] }
+// ─────────────────────────────────────────────────────────
+
+function handleExcel(inp) {
+  const file = inp.files[0]; if (!file) return;
+  setStatus(`解析 ${file.name}...`);
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'binary' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+      S.usedTokens = new Set();
+      S.pages    = buildPages(rows);
+      S._rawRows = rows;   // store for compact mode rebuild
+      S.cur = 0;
+      // Collect tokens from all pages
+      for (const pg of S.pages) collectPageTokens(pg);
+      fileOk('bExcel','nExcel', file.name);
+      savePagesToStorage();
+      refreshAll();
+      setStatus(`已載入 ${S.pages.length} 頁`);
+    } catch(err) {
+      setStatus('解析失敗：' + err.message);
+      console.error(err);
+    }
+  };
+  reader.readAsBinaryString(file);
+}
+
+function collectPageTokens(pg) {
+  for (const line of [...pg.header, ...pg.footer]) parseSegments(line);
+  for (const sec of pg.sections) {
+    if (sec.heroToken) S.usedTokens.add(sec.heroToken);
+    for (const line of [...(sec.subHeader||[]), ...sec.rules]) parseSegments(line);
+  }
+}
+
+function buildPages(rows) {
+  const pages = [];
+  const groups = [];
+  let curGroup = null;
+  let lastB = '';
+
+  for (const row of rows) {
+    const A = toStr(row[0]), B = toStr(row[1]), C = toStr(row[2]);
+    if (!A && !B && !C) continue;
+    if (A) { curGroup = { name: A, rows: [] }; groups.push(curGroup); lastB = ''; }
+    if (curGroup) {
+      const effB = B || lastB;
+      if (B) lastB = B;
+      curGroup.rows.push({ B: effB, C });
+    }
+  }
+
+  for (const g of groups) {
+    if      (g.name.includes('特殊標誌')) processSpecial(g, pages);
+    else if (g.name.includes('轉輪示意')) processReelDiagram(g, pages);
+    else                                   processNormal(g, pages);
+  }
+  return pages;
+}
+
+const TABLE_TYPES = new Set(['表格','球分表','配分表',
+  'Denom按鈕','按鈕','BET TRIGGER 規則','LINE TRIGGER 規則','NONE TRIGGER 規則',
+  'Feature Bet / Prizes','Denom']);
+
+// 賠分表 and 賠率表 both route to PAYTABLE renderer
+const PAYTABLE_TYPES = new Set(['賠率表', '賠分表']);
+
+// ── Paytable multi-group line parser ────────────────────
+// Extracts ALL { token, count, value } groups from one line.
+// A line like "[WW] 5 - 250    [M1] 5 - 150    [M2] 5 - 100" yields 3 groups.
+function parseAllPayGroupsFromLine(line) {
+  if (!line || !line.trim()) return [];
+  const segs = parseSegments(line);
+  const groups = [];
+  let i = 0;
+
+  while (i < segs.length) {
+    // Skip plain whitespace / separating text
+    if (segs[i]?.t === 'txt' && !segs[i].v.trim()) { i++; continue; }
+
+    let token = '';
+    let si = i;
+
+    // Optional leading token
+    if (segs[si]?.t === 'tok') { token = segs[si].v; si++; }
+
+    // Skip whitespace after token
+    while (si < segs.length && segs[si]?.t === 'txt' && !segs[si].v.trim()) si++;
+
+    const a    = segs[si];
+    const dash = segs[si + 1];
+    const b    = segs[si + 2];
+
+    if ((a?.t === 'num' || a?.t === 'nbr') &&
+        dash?.t === 'txt' && /[-–—－]/.test(dash.v) &&
+        (b?.t === 'num' || b?.t === 'nbr')) {
+      groups.push({ token, count: Number(a.v), value: Number(b.v) });
+      i = si + 3;
+    } else if (token) {
+      i = si;     // consumed token, no pay after it → skip to next
+    } else {
+      i++;        // unmatched segment
+    }
+  }
+  return groups;
+}
+
+// Group raw paytable lines into symbol entries.
+// Returns: [ { token, pays: [{count,value},...] }, ... ]  (insertion order)
+function parsePaytableEntries(rawLines) {
+  const lines = rawLines.flatMap(l =>
+    (l && String(l).includes('\n')) ? String(l).split(/\r?\n/).map(s => s.trim()) : [l]
+  ).filter(l => l && l.trim());
+
+  const entryMap   = new Map();
+  const entryOrder = [];
+  const labelLines = [];          // lines that have no token-pay pattern → trailing labels
+
+  for (const line of lines) {
+    const groups = parseAllPayGroupsFromLine(line);
+    const hasPayGroup = groups.some(g => g.token);
+    if (hasPayGroup) {
+      for (const g of groups) {
+        if (!g.token) continue;
+        const key = norm(g.token);
+        if (!entryMap.has(key)) {
+          const entry = { token: g.token, pays: [] };
+          entryMap.set(key, entry);
+          entryOrder.push(entry);
+        }
+        entryMap.get(key).pays.push({ count: g.count, value: g.value });
+      }
+    } else {
+      // Pure text line with no token-pay → trailing label (e.g. "OF A KIND")
+      const txt = line.trim();
+      if (txt) labelLines.push(txt);
+    }
+  }
+  // Combine all trailing label lines into one string
+  const label = labelLines.join(' ').trim();
+  return { entries: entryOrder, label };
+}
+
+// ── Height estimation for auto-packing ──────────────────
+// ── estimateSectionH ─────────────────────────────────────
+// Accurate height estimate for split-detection.
+// Uses: actual heroSize×1.1, BASE_LH=1.8, contentOffset, token-width-aware wrap.
+function estimateSectionH(sec, cfg) {
+  const fs  = Number(cfg.ruleFontSize);
+  const lh  = fs * (cfg._compactLH || 1.8);
+  const tmp = document.createElement('canvas').getContext('2d');
+  tmp.font  = `bold ${fs}px Arial`;
+
+  // content_offset is applied once to startY for the whole page,
+  // not per-section. Only add it for single-section estimates.
+  let h = sec._multiHero ? 0 : Number(cfg.contentOffset);
+
+  if (sec.heroToken) {
+    const heroSz = sec._multiHero
+      ? Math.min(Number(cfg.heroSize) * 0.65, 160)   // multi-section: compact size
+      : Number(cfg.heroSize) * 1.1;                   // single section: full size
+    h += heroSz + (sec._multiHero ? 6 + 10 + 12 : Number(cfg.heroGap) + 59 + 18);
+  } else if (sec.title) {
+    h += 73 + 18;
+  }
+  if (sec.subHeader?.length) h += sec.subHeader.length * 28 + 12;
+
+  for (const rawRule of (sec.rules || [])) {
+    if (!rawRule) { h += lh * 0.4; continue; }
+
+    // ── Expand embedded \n first (same as drawRules does at render time) ──
+    const lines = String(rawRule).includes('\n')
+      ? String(rawRule).split(/\r?\n/).map(s => s.trim()).filter(Boolean)
+      : [rawRule];
+
+    for (const line of lines) {
+      if (!line) { h += lh * 0.4; continue; }
+      if (isPipeRow(line)) {
+        // Pipe table row: rowH ≈ fontSize*1.15 + 20px padding
+        h += Math.round(fs * 1.15 + 24);
+        continue;
+      }
+      if (isFullSizeLine(line)) {
+        const tok = parseSegments(line).find(s => s.t === 'tok')?.v;
+        const img = tok ? getIcon(tok) : null;
+        h += img ? (img.width > L.W - 40
+          ? Math.round(img.height * (L.W - 40) / img.width) : img.height) + 20
+          : 320;
+        continue;
+      }
+      if (isScoreLine(line)) { h += Math.round(fs * 1.45 * 1.8) + 10; continue; }
+      const expanded = tokenExpandForMeasure(line, fs);      h += wrapText(tmp, expanded, `bold ${fs}px Arial`, 1700).length * lh;
+    }
+  }
+  return h + 20;
+}
+
+// Replace [token] occurrences with W's that approximate the rendered pixel width
+function tokenExpandForMeasure(line, fs, tmp) {
+  // ── Conservative mode (no tmp): original behaviour ──────
+  // Used by packing / splitting functions. Intentionally over-estimates
+  // token widths so packing stays safe (never under-packs).
+  if (!tmp) {
+    return line.replace(/[\u005B\uFF3B]([^\u005D\uFF3D]+)[\u005D\uFF3D]/g, () => {
+      const tokPxW  = fs * 1.95 + 16 + 16;
+      const charPxW = fs * 0.52;
+      return 'W'.repeat(Math.max(1, Math.ceil(tokPxW / charPxW)));
+    });
+  }
+
+  // ── Accurate mode (tmp provided): used only for display measurement ──
+  // measureFeatureContentH passes its canvas so we can measure real widths.
+  tmp.font = `bold ${fs}px Arial`;
+  const wW = tmp.measureText('W').width;
+
+  // Expand [TOKEN] icons
+  let result = line.replace(/[\u005B\uFF3B]([^\u005D\uFF3D]+)[\u005D\uFF3D]/g, () => {
+    const tokPxW = fs * 1.95 + 32;
+    return 'W'.repeat(Math.max(1, Math.ceil(tokPxW / wW)));
+  });
+
+  // Expand {N} number tokens (rendered at 1.25× fontSize with spaces)
+  result = result.replace(/[\{｛](\d+)[\}｝]/g, (_, v) => {
+    tmp.font = `bold ${Math.round(fs * 1.25)}px Arial`;
+    const nbrW = tmp.measureText(' ' + v + ' ').width;
+    tmp.font = `bold ${fs}px Arial`;
+    return 'W'.repeat(Math.max(1, Math.ceil(nbrW / wW)));
+  });
+
+  return result;
+}
+
+function availableContentH(hasHeader, nHeaderLines, hasFooter, nFooterLines) {
+  let h = 1080;
+  if (hasHeader) h -= (nHeaderLines * 22 + 10 + 8 + 18); // header + box top pad
+  else h -= 28; // top margin
+  if (hasFooter) h -= (nFooterLines * 14 + 10);
+  h -= 80; // bottom margin (Return to Game button area)
+  return h;
+}
+
+// ── Page packing ─────────────────────────────────────────
+// ── Page packing: fits sections onto pages greedily ─────
+function packIntoPages(sections, header, footer, groupName, pages) {
+  if (!sections.length) return;
+
+  const cfg = getEffectiveCfg();  // use compact cfg when compactMode is on
+  const hasHdr = header.length > 0;
+  const hasFtr = footer.length > 0;
+  const availH = availableContentH(hasHdr, header.length, hasFtr, footer.length);
+
+  let pageSections = [];
+  let usedH = 0;
+
+  const flush = () => {
+    if (!pageSections.length) return;
+    pages.push({
+      group: groupName,
+      header: [...header],
+      footer: [...footer],
+      sections: [...pageSections],
+    });
+    pageSections = []; usedH = 0;
+  };
+
+  for (const sec of sections) {
+    if (sec.paytableEntries) {
+      flush();
+      pages.push({ group: groupName, header: [...header], footer: [...footer], sections: [sec] });
+      continue;
+    }
+
+    const secHSingle = estimateSectionH(sec, cfg);
+    const secHMulti  = estimateSectionH({ ...sec, _multiHero: true }, cfg);
+
+    // If this section alone exceeds 75% threshold → it needs splitLongSection
+    if (secHSingle > availH * 0.75) {
+      flush();
+      const splitPages = splitLongSection(sec, header, footer, groupName, availH, cfg);
+      pages.push(...splitPages);
+      continue;
+    }
+
+    // Check if it fits on current page using multi-hero estimates for all
+    if (pageSections.length > 0) {
+      // Re-estimate existing sections with multi-hero size for the combination check
+      const existingMultiH = pageSections.reduce((sum, s, idx) => {
+        const h = estimateSectionH({ ...s, _multiHero: true }, cfg);
+        return sum + h + (idx > 0 ? 30 : 0);
+      }, 0);
+      if (existingMultiH + 30 + secHMulti > availH) {
+        flush();
+      }
+    }
+
+    pageSections.push(sec);
+    usedH = pageSections.reduce((sum, s, idx) => {
+      const h = idx === 0 && pageSections.length === 1
+        ? estimateSectionH(s, cfg)   // single on page: use full estimate
+        : estimateSectionH({ ...s, _multiHero: true }, cfg);
+      return sum + h + (idx > 0 ? 30 : 0);
+    }, 0);
+  }
+  flush();
+}
+
+// ── splitLongSection ─────────────────────────────────────
+// HEIGHT-BASED split (not line-count-based).
+// Accurately estimates the available height for rules on each sub-page.
+function splitLongSection(sec, header, footer, groupName, availH, cfg) {
+  const fs       = Number(cfg.ruleFontSize);
+  const BASE_LH  = fs * (cfg._compactLH || 1.8);
+  const RULE_MAX_W = 1700;
+  const tmp = document.createElement('canvas').getContext('2d');
+  tmp.font  = `bold ${fs}px Arial`;
+
+  // ── Step 1: estimate contentBottom using actual footer height ────
+  const FTR_FS = 16, FTR_LH = Math.round(FTR_FS * 1.35);
+  let ftrLines = 0;
+  for (const line of footer) {
+    if (!line) { ftrLines++; continue; }
+    tmp.font = `bold ${FTR_FS}px Arial`;
+    const segs = parseSegments(line);
+    if (segs.some(s => s.t !== 'txt')) {
+      ftrLines += Math.ceil(tmp.measureText(line.replace(/\[.*?\]/g, '')).width / 1200) + 1;
+    } else {
+      ftrLines += balancedWrapText(tmp, line, `bold ${FTR_FS}px Arial`, 1200).length;
+    }
+    tmp.font = `bold ${fs}px Arial`;
+  }
+  const ftrH         = footer.length ? ftrLines * FTR_LH + 8 : 0;
+  const btnTop       = L.BTN_Y - L.BTN_H / 2 - L.BTN_MARGIN;
+  const contentBottom = footer.length
+    ? Math.min(L.FTR_BOT - ftrH - 6, btnTop)
+    : (L.BTN_Y - L.BTN_H / 2 - 16);  // 969 — no footer: use footer zone for content
+
+  // ── Step 2: estimate hdrBottom ───────────────────────────────────
+  // Pessimistic: each header row wraps to 2 balanced lines
+  let hdrBottom = L.HDR_Y;
+  for (const line of header) {
+    if (!line) continue;
+    tmp.font = `bold 20px Arial`;
+    const segs = parseSegments(line);
+    const nRows = segs.some(s => s.t !== 'txt') ? 2
+      : balancedWrapText(tmp, line, 'bold 20px Arial', 1500).length;
+    hdrBottom += nRows * (20 * 1.8);
+    tmp.font = `bold ${fs}px Arial`;
+  }
+  hdrBottom += 10;
+
+  // ── Step 3: available height for rules on first vs continuation pages ──
+  const baseY = hdrBottom + 8 + Number(cfg.contentOffset);
+  const firstOverhead = sec.heroToken
+    ? baseY + Number(cfg.heroSize) * 1.1 + Number(cfg.heroGap) + 59 + 18
+    : sec.title ? baseY + 73 + 18 : baseY + 18;
+  // Continuation pages also repeat the hero image (user requirement)
+  const contOverhead = sec.heroToken
+    ? baseY + Number(cfg.heroSize) * 1.1 + Number(cfg.heroGap) + 59 + 18
+    : sec.title ? baseY + 73 + 18 : baseY + 18;
+
+  const rulesAvailH1 = Math.max(80, contentBottom - firstOverhead);
+  const rulesAvailHN = Math.max(80, contentBottom - contOverhead);
+
+  // ── Step 4: measure each rule's rendered height (token-width-aware) ──
+  function ruleH(rule) {
+    if (!rule || !rule.trim()) return BASE_LH * 0.4;
+    tmp.font = `bold ${fs}px Arial`;
+    const expanded = tokenExpandForMeasure(rule, fs);  // no tmp → conservative packing
+    return wrapText(tmp, expanded, `bold ${fs}px Arial`, RULE_MAX_W).length * BASE_LH;
+  }
+
+  // ── Step 5: greedy packing ───────────────────────────────────────
+  const pages = [];
+  let bucket = [], bucketH = 0, firstPage = true;
+  let curAvailH = rulesAvailH1;
+
+  const flush = () => {
+    if (!bucket.length) return;
+    pages.push({
+      group: groupName,
+      header: [...header],
+      footer: [...footer],
+      sections: [{
+        title:     sec.title,
+        heroToken: sec.heroToken,          // 鐵則：標題含圖片時，每一拆頁都顯示
+        subHeader: firstPage ? (sec.subHeader || []) : [],
+        rules: [...bucket],
+      }],
+    });
+    bucket = []; bucketH = 0; firstPage = false;
+    curAvailH = rulesAvailHN;
+  };
+
+  for (const rule of sec.rules) {
+    const h = ruleH(rule);
+    if (bucket.length > 0 && bucketH + h > curAvailH) flush();
+    bucket.push(rule);
+    bucketH += h;
+  }
+  flush();
+  return pages;
+}
+// Packs 2 sections per page (side-by-side). 3rd section goes to page 2, etc.
+function processReelDiagram(g, pages) {
+  let footer = [];
+  let sections = [];
+  let curSec = null;
+
+  for (const r of g.rows) {
+    const { B, C } = r;
+    if (!C) continue;
+    if (B === '標題') {
+      curSec = { title: '', heroToken: '', subHeader: [], rules: [] };
+      const { titleText, heroToken } = parseTitle(C);
+      curSec.title = titleText; curSec.heroToken = heroToken;
+      sections.push(curSec);
+    } else if (B === '規則' || TABLE_TYPES.has(B)) {
+      if (curSec) curSec.rules.push(C);
+    } else if (B === '頁尾') {
+      footer.push(C);
+    } else {
+      if (curSec && C) curSec.rules.push(C);
+    }
+  }
+
+  // Pack 2 sections per page
+  for (let i = 0; i < sections.length; i += 2) {
+    pages.push({
+      group: g.name,
+      header: [],
+      footer: [...footer],
+      sections: sections.slice(i, i + 2),
+      reelLayout: true,   // ← flag for side-by-side renderer
+    });
+  }
+}
+
+// ── NORMAL group processor ───────────────────────────────
+function processNormal(g, pages) {
+  let pageHeader = [];
+  let pageFooter = [];
+  let sections = [];
+  let curSec = null;
+  let seenTitle = false;
+  let paytableRows = [];    // accumulate 賠率表 rows
+  let inPaytable = false;
+
+  const flushPaytable = () => {
+    if (!paytableRows.length) return;
+    const { entries, label } = parsePaytableEntries(paytableRows);
+    if (entries.length) {
+      if (curSec) {
+        curSec.paytableEntries = entries;
+        if (label) curSec.paytableLabel = label;
+      } else {
+        const sec = { title: '', heroToken: '', subHeader: [], rules: [], paytableEntries: entries, paytableLabel: label };
+        sections.push(sec);
+        curSec = sec;
+      }
+    }
+    paytableRows = []; inPaytable = false;
+  };
+
+  for (const r of g.rows) {
+    const { B, C } = r;
+    if (!C) continue;
+
+    if (PAYTABLE_TYPES.has(B)) {
+      inPaytable = true;
+      paytableRows.push(C);
+      continue;
+    }
+
+    if (inPaytable && !B) {
+      // B empty continuation — could still be paytable data
+      paytableRows.push(C);
+      continue;
+    }
+
+    if (inPaytable) flushPaytable();
+
+    if (B === '頁首') {
+      // 鐵則：B=頁首 永遠放到頁面頂部，不管在 Excel 裡排在標題前還是後
+      pageHeader.push(C);
+    } else if (B === '標題') {
+      flushPaytable();
+      curSec = { title: '', heroToken: '', subHeader: [], rules: [] };
+      const { titleText, heroToken } = parseTitle(C);
+      curSec.title = titleText;
+      curSec.heroToken = heroToken;
+      sections.push(curSec);
+      seenTitle = true;
+    } else if (B === '規則' || TABLE_TYPES.has(B)) {
+      if (curSec) curSec.rules.push(C);
+      else if (C) pageHeader.push(C);
+    } else if (B === '頁尾') {
+      pageFooter.push(C);
+    } else {
+      if (curSec && C) curSec.rules.push(C);
+    }
+  }
+  flushPaytable();
+
+  packIntoPages(sections, pageHeader, pageFooter, g.name, pages);
+}
+
+// ── SPECIAL group processor (特殊標誌) ──────────────────
+function processSpecial(g, pages) {
+  let shHdr = [], shFtr = [];
+  let sections = [];
+  let curSec = null;
+
+  for (const r of g.rows) {
+    const { B, C } = r;
+    if (!C) continue;
+    if (B === '頁首') {
+      shHdr.push(C);
+    } else if (B === '標題') {
+      curSec = { title: '', heroToken: '', subHeader: [], rules: [] };
+      const { titleText, heroToken } = parseTitle(C);
+      curSec.title = titleText; curSec.heroToken = heroToken;
+      sections.push(curSec);
+    } else if (B === '規則' || TABLE_TYPES.has(B)) {
+      if (curSec) curSec.rules.push(C);
+    } else if (B === '頁尾') {
+      shFtr.push(C);
+    } else {
+      if (curSec && C) curSec.rules.push(C);
+    }
+  }
+
+  // Pack sections into pages (handles [MY]+[WW] fitting on same page)
+  packIntoPages(sections, shHdr, shFtr, g.name, pages);
+}
+
+// ─────────────────────────────────────────────────────────
+// ASSET LOADING
+// ─────────────────────────────────────────────────────────
+function handleBg(inp) {
+  const f = inp.files[0]; if (!f) return;
+  loadImg(f, img => { S.assets.bg = img; fileOk('bBg','nBg', f.name); draw(); setStatus('底圖已載入'); });
+}
+function handleLogo(inp) {
+  const f = inp.files[0]; if (!f) return;
+  loadImg(f, img => { S.assets.logo = img; fileOk('bLogo','nLogo', f.name); draw(); setStatus('Logo 已載入'); });
+}
+function handleIcons(inp) {
+  const files = Array.from(inp.files).filter(f => /\.(png|jpe?g|webp)$/i.test(f.name));
+  if (!files.length) { setStatus('資料夾內無圖片'); return; }
+  S.assets.icons = {}; S.assets.iconNames = {};
+  let done = 0;
+  for (const f of files) {
+    const base = f.name.replace(/\.[^.]+$/, '');
+    const key  = norm(base);
+    loadImg(f, img => {
+      S.assets.icons[key] = img;
+      S.assets.iconNames[key] = f.name;
+      if (++done === files.length) {
+        fileOk('bIcons','nIcons', `${files.length} 個圖示`);
+        refreshTokenList(); draw();
+        setStatus(`已載入 ${files.length} 個圖示`);
+      }
+    });
+  }
+}
+function loadImg(file, cb) {
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => cb(img);
+  img.src = url;
+}
+
+// ─────────────────────────────────────────────────────────
+// CANVAS RENDERING
+// ─────────────────────────────────────────────────────────
+const canvas = document.getElementById('helpCanvas');
+const ctx    = canvas.getContext('2d');
+
+function draw() {
+  if (!S.pages.length) { canvas.style.display = 'none'; document.getElementById('emptyState').style.display = 'block'; return; }
+  canvas.style.display = 'block'; document.getElementById('emptyState').style.display = 'none';
+  renderPage(ctx, S.pages[S.cur]);
+  refreshPageInfo();
+}
+
+// ─────────────────────────────────────────────────────────
+// REEL DIAGRAM PAGE RENDERER (轉輪示意)
+// Side-by-side: up to 2 sections split left/right
+// Each section: column title → 示意圖 (scaled to column) → rules text
+// ─────────────────────────────────────────────────────────
+
+// Draw a multi-line gradient title centred within a column
+function drawColumnTitle(c, text, colX, colW, y) {
+  const fontSize = 40;
+  const cx       = colX + colW / 2;
+  const maxW     = colW - 60;
+
+  c.save();
+  const wrapped = balancedWrapText(c, text, `bold ${fontSize}px Arial`, maxW);
+  for (const line of wrapped) {
+    const grad = c.createLinearGradient(0, y, 0, y + fontSize);
+    grad.addColorStop(0,    '#ffe566');
+    grad.addColorStop(0.45, '#ffaf3d');
+    grad.addColorStop(1,    '#c87800');
+    c.font = `bold ${fontSize}px Arial`;
+    c.fillStyle = grad;
+    c.textAlign = 'center'; c.textBaseline = 'top';
+    c.shadowColor = 'rgba(0,0,0,0.45)'; c.shadowBlur = 8; c.shadowOffsetY = 2;
+    c.fillText(line, cx, y);
+    y += fontSize + 10;
+  }
+  c.restore();
+  return y + 8;
+}
+
+// Draw 示意圖 scaled to fit within the column, centred horizontally
+function drawColumnFullSizeImage(c, token, colX, colW, y) {
+  const img   = getIcon(token);
+  const maxW  = colW - 40;
+  const maxH  = 380;   // cap height so rules still have room below
+
+  if (!img) {
+    const pw = Math.min(maxW, 600), ph = 240;
+    const x  = colX + (colW - pw) / 2;
+    c.save();
+    c.fillStyle = 'rgba(255,175,61,.10)';
+    c.strokeStyle = 'rgba(255,175,61,.45)'; c.lineWidth = 2;
+    rrect(c, x, y, pw, ph, 8); c.fill(); c.stroke();
+    c.fillStyle = '#ffaf3d'; c.font = 'bold 16px Arial';
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(`[${token}]`, x + pw/2, y + ph/2);
+    c.restore();
+    return y + ph;
+  }
+
+  let iw = img.width, ih = img.height;
+  // Scale to fit within maxW × maxH
+  if (iw > maxW) { ih = Math.round(ih * maxW / iw); iw = maxW; }
+  if (ih > maxH) { iw = Math.round(iw * maxH / ih); ih = maxH; }
+  const x = colX + (colW - iw) / 2;
+  c.drawImage(img, x, y, iw, ih);
+  return y + ih;
+}
+
+// Draw one reel-diagram column section
+function drawReelColumn(c, sec, colX, colW, startY, contentBottom, cfg) {
+  const fontSize = Number(cfg.ruleFontSize);
+  const LINE_H   = fontSize * 1.8;
+  const cx       = colX + colW / 2;
+  const maxW     = colW - 30;
+  let y = startY;
+
+  if (sec.title) y = drawColumnTitle(c, sec.title, colX, colW, y);
+
+  // Expand embedded newlines
+  const rawLines = sec.rules || [];
+  const lines = rawLines.flatMap(l =>
+    (l && String(l).includes('\n')) ? String(l).split(/\r?\n/).map(s => s.trim()) : [l]
+  );
+
+  for (let i = 0; i < lines.length; i++) {
+    if (y + fontSize > contentBottom) break;
+    const line = lines[i];
+    if (isFullSizeLine(line)) {
+      const tok = parseSegments(line).find(s => s.t === 'tok').v;
+      y = drawColumnFullSizeImage(c, tok, colX, colW, y);
+      y += 20;
+      continue;
+    }
+    if (!line) { y += LINE_H * 0.4; continue; }
+    const segs = parseSegments(line);
+    if (!segs.some(s => s.t !== 'txt')) {
+      const wrapped = wrapText(c, line, `bold ${fontSize}px Arial`, maxW);
+      for (const wl of wrapped) {
+        c.save(); c.font = `bold ${fontSize}px Arial`; c.fillStyle = '#ffffff';
+        c.textAlign = 'center'; c.textBaseline = 'top'; c.fillText(wl, cx, y); c.restore();
+        y += LINE_H;
+      }
+    } else {
+      y = drawMixedWrapped(c, segs, cx, y, fontSize, '#ffffff', maxW, LINE_H);
+    }
+  }
+  return y;
+}
+
+function renderReelPage(c, pg, contentBottom, cfg) {
+  const secs    = pg.sections || [];
+  const hasFtr  = pg.footer?.length > 0;
+  const COL_PAD = 30;
+  const available = contentBottom - 28;
+
+  // ── Vertical centering ────────────────────────────────────────────
+  // Estimate content height of the tallest column (single or either of two)
+  const estH = Math.max(...secs.map(sec =>
+    measureFeatureContentH([sec], cfg, Number(cfg.ruleFontSize) * 1.8, 800)
+  ));
+  let startY = 28;
+  if (estH < available * 0.85) {
+    startY = Math.round(28 + (available - estH) * 0.40);
+  }
+
+  if (secs.length >= 2) {
+    const halfW = Math.floor(L.W / 2);
+    drawReelColumn(c, secs[0], COL_PAD,         halfW - COL_PAD * 2, startY, contentBottom, cfg);
+    drawReelColumn(c, secs[1], halfW + COL_PAD, halfW - COL_PAD * 2, startY, contentBottom, cfg);
+    c.save(); c.strokeStyle = 'rgba(255,175,61,.18)'; c.lineWidth = 1;
+    c.beginPath(); c.moveTo(halfW, 40); c.lineTo(halfW, contentBottom - 10); c.stroke();
+    c.restore();
+  } else if (secs.length === 1) {
+    drawReelColumn(c, secs[0], COL_PAD, L.W - COL_PAD * 2, startY, contentBottom, cfg);
+  }
+
+  if (hasFtr) drawFooter(c, pg.footer);
+}
+
+// ─────────────────────────────────────────────────────────
+// MEASURE FEATURE PAGE CONTENT HEIGHT (dry-run, no drawing)
+// Returns estimated total height of all sections on a feature page.
+// Used to compute vertical centering offset.
+// ─────────────────────────────────────────────────────────
+function measureFeatureContentH(secs, cfg, customLH, customMaxW) {
+  const fs    = Number(cfg.ruleFontSize);
+  const lh    = customLH  || (fs * 1.8);
+  const maxW  = customMaxW || 1700;
+  const tmp   = document.createElement('canvas').getContext('2d');
+  tmp.font    = `bold ${fs}px Arial`;
+
+  let total = 0;
+  let heroDrawnOnPage = false;
+
+  for (let si = 0; si < secs.length; si++) {
+    const sec = secs[si];
+    if (si > 0) total += 32;
+    if (sec.title) total += 55 + 18;
+    if (sec.subHeader?.length) total += sec.subHeader.length * (16 * 1.8) + 6;
+
+    // ── Hero: mirror the actual rendering logic ──────────
+    // Multi-section Feature page: first hero is full size; same token as prev → skip
+    if (sec.heroToken) {
+      const prevHero = si > 0 ? secs[si - 1].heroToken : null;
+      const showHero = sec.heroToken !== prevHero;
+      if (showHero) {
+        const sz = !heroDrawnOnPage ? Number(cfg.heroSize) : Number(cfg.heroSize) * 0.6;
+        total += sz + 10 + 12;  // drawHeroSymbol height + y+2 offset + 6px gap
+        heroDrawnOnPage = true;
+      }
+    }
+
+    for (const rule of (sec.rules || [])) {
+      if (!rule) { total += lh * 0.4; continue; }
+
+      // ── Full-size image: measure rendered height ───────
+      if (isFullSizeLine(rule)) {
+        const tok = parseSegments(rule).find(s => s.t === 'tok')?.v;
+        if (tok) {
+          const img = getIcon(tok);
+          if (img) {
+            const maxW2 = L.W - 40;
+            let iw = img.width, ih = img.height;
+            if (iw > maxW2) { ih = Math.round(ih * maxW2 / iw); }
+            total += ih + 20;
+          } else {
+            total += 300 + 20;
+          }
+        }
+        continue;
+      }
+
+      // ── Pipe table: estimate actual table height ───────
+      // drawRulesReturn splits by \n first, then groups pipe rows.
+      // Estimate: nRows × (fontSize * 1.15 + 4 + PAD_V*2) where PAD_V=10
+      const ruleStr = String(rule);
+      if (ruleStr.includes('｜') || ruleStr.includes('|')) {
+        const pipeRows = ruleStr.split(/\r?\n/).filter(l => l.includes('｜') || l.includes('|'));
+        if (pipeRows.length > 0) {
+          const rowH = fs * 1.15 + 4 + 20;  // lineH + PAD_V*2
+          total += pipeRows.length * rowH + 12;  // +12 trailing gap from return value
+          continue;
+        }
+      }
+
+      const expanded = tokenExpandForMeasure(rule, fs, tmp);
+      total += wrapText(tmp, expanded, `bold ${fs}px Arial`, maxW).length * lh;
+    }
+    if (sec.rules?.length) total += 18;
+  }
+  return Math.ceil(total);
+}
+
+// ─────────────────────────────────────────────────────────
+// UNIFIED PIPE TABLE ROW HEIGHT
+// When a Feature page has multiple pipe tables, compute a
+// single target row height so every table looks identical.
+// Returns the target avg row-height (px), or null if only
+// 0–1 tables on the page (no coordination needed).
+// ─────────────────────────────────────────────────────────
+function computePagePipeRowH(secs, startY, contentBottom, cfg, richLineH) {
+  const fs       = Number(cfg.ruleFontSize);
+  const naturalH = Math.round(fs * 1.15 + 4 + 20);  // lineH + PAD_V*2 for 1-line cell
+
+  // Collect all pipe tables (count rows per table)
+  const tables = [];
+  for (const sec of secs) {
+    for (const rule of (sec.rules || [])) {
+      const ruleStr = String(rule || '');
+      if (ruleStr.includes('｜')) {
+        const rows = ruleStr.split(/\r?\n/).filter(l => l.includes('｜'));
+        if (rows.length > 0) tables.push(rows.length);
+      }
+    }
+  }
+  if (tables.length <= 1) return null;  // single table: no need to unify
+
+  const totalPipeRows  = tables.reduce((s, n) => s + n, 0);
+  const tableGapTotal  = tables.length * 12;          // drawPipeTable return += 12
+  const naturalTableH  = tables.reduce((s, n) => s + n * naturalH + 12, 0);
+
+  // Total page content height (measureFeatureContentH already estimates tables at naturalH)
+  const totalH    = measureFeatureContentH(secs, cfg, richLineH, 1700);
+  const nonTableH = totalH - naturalTableH;
+
+  const availForTables = contentBottom - startY - nonTableH - tableGapTotal;
+  if (availForTables <= 0) return naturalH;
+
+  const targetRowH = availForTables / totalPipeRows;
+  // Clamp between naturalH and 2.2× naturalH (don't make rows absurdly tall)
+  return Math.round(Math.max(naturalH, Math.min(naturalH * 2.2, targetRowH)));
+}
+
+// ─────────────────────────────────────────────────────────
+// OPTIMAL LAYOUT PARAMETERS (for rich-looking pages)
+// When a feature page has lots of empty space, expand LINE_H
+// and shrink maxW so content fills ~TARGET_FILL of the page.
+// Returns { lineH, maxW }
+// ─────────────────────────────────────────────────────────
+function calcRichLayoutParams(secs, cfg, available, baseLHMult) {
+  const fs           = Number(cfg.ruleFontSize);
+  const BASE_LH      = fs * (baseLHMult || 1.8);
+  const MAX_LH       = fs * (baseLHMult ? baseLHMult * 1.35 : 2.6);  // compact max is lower
+  const BASE_W       = 1700;
+  const MIN_W        = 1100;        // min line wrap width (don't make lines too short)
+  const TARGET_FILL  = 0.80;        // aim to fill 80% of available space
+  const targetH      = available * TARGET_FILL;
+
+  // Baseline height
+  const baseH = measureFeatureContentH(secs, cfg, BASE_LH, BASE_W);
+
+  // If already overfull or very close, return defaults
+  if (baseH >= targetH * 0.90) return { lineH: BASE_LH, maxW: BASE_W };
+
+  // Step 1: try increasing LINE_H only (keeps line count the same)
+  // Scale proportionally, capped at MAX_LH
+  const lhScale = Math.min(MAX_LH / BASE_LH, targetH / baseH);
+  let tryLH  = Math.round(BASE_LH * lhScale * 10) / 10;
+  let tryW   = BASE_W;
+  let tryH   = measureFeatureContentH(secs, cfg, tryLH, tryW);
+
+  // Step 2: if still below 75% of target after max LINE_H, shrink maxW too
+  if (tryH < targetH * 0.75) {
+    tryLH = MAX_LH;
+    // Binary search for the right maxW
+    let lo = MIN_W, hi = BASE_W;
+    for (let iter = 0; iter < 12; iter++) {
+      const mid = Math.round((lo + hi) / 2);
+      const h   = measureFeatureContentH(secs, cfg, tryLH, mid);
+      if (h < targetH) hi = mid;
+      else             lo = mid;
+      if (hi - lo <= 20) break;
+    }
+    tryW = Math.round((lo + hi) / 2);
+    tryH = measureFeatureContentH(secs, cfg, tryLH, tryW);
+  }
+
+  // Final safety: don't overflow
+  if (tryH > available) {
+    tryLH = BASE_LH;
+    tryW  = BASE_W;
+  }
+
+  return { lineH: tryLH, maxW: tryW };
+}
+
+function renderPage(c, pg) {
+  const cfg     = getEffectiveCfg();
+  const baseLH  = cfg._compactLH ? cfg._compactLH : 1.8;  // compact: 1.6, normal: 1.8
+
+  // Clear / Background
+  c.clearRect(0,0,L.W,L.H);
+  c.fillStyle = '#0d1b2a'; c.fillRect(0,0,L.W,L.H);
+  if (S.assets.bg) c.drawImage(S.assets.bg, 0, 0, L.W, L.H);
+
+  // Pre-calculate footer height (needed for contentBottom even for reel pages)
+  const hasFtr = pg.footer?.length > 0;
+  const FTR_FS = 16, FTR_LH = Math.round(FTR_FS * 1.35);
+  let ftrTotalLines = 0;
+  if (hasFtr) {
+    const tmp = document.createElement('canvas').getContext('2d');
+    tmp.font = `bold ${FTR_FS}px Arial`;
+    for (const line of pg.footer) {
+      if (!line) { ftrTotalLines++; continue; }
+      const segs = parseSegments(line);
+      if (segs.some(s => s.t !== 'txt')) {
+        ftrTotalLines += Math.ceil(tmp.measureText(line.replace(/\[.*?\]/g,'')).width / 1200) + 1;
+      } else {
+        ftrTotalLines += balancedWrapText(tmp, line, `bold ${FTR_FS}px Arial`, 1200).length;
+      }
+    }
+  }
+  const ftrH = hasFtr ? ftrTotalLines * FTR_LH + 8 : 0;
+  const btnTop = L.BTN_Y - L.BTN_H / 2 - L.BTN_MARGIN;
+  // No footer: release the footer zone back to content (nothing occupies it)
+  // BTN_Y - BTN_H/2 - 16 = 1014 - 29 - 16 = 969, vs. btnTop (BTN_MARGIN=48) = 937
+  const contentBottom = hasFtr
+    ? Math.min(L.FTR_BOT - ftrH - 6, btnTop)
+    : (L.BTN_Y - L.BTN_H / 2 - 16);
+
+  // ── 轉輪示意 side-by-side layout ──────────────────────
+  if (pg.reelLayout) {
+    renderReelPage(c, pg, contentBottom, cfg);
+    if (S.assets.logo) drawLogo(c);
+    drawBottomButtons(c);
+    return;
+  }
+
+  const hasHeader = pg.header?.length > 0;
+  const secs      = pg.sections || [];
+
+  if (hasHeader) {
+    // ── SYMBOL PAGE ────────────────────────────────────────
+    if (secs.length === 1 && secs[0].paytableEntries) {
+      // ── PAYTABLE: 鐵則順序 頁首 → 標題 → 賠分格 ──────────
+      const sec = secs[0];
+      // 1. 頁首：永遠在最頂部
+      const hdrBottom = pg.header?.length ? drawHeader(c, pg.header) : L.SAFE_Y;
+      // 2. 標題：緊接在頁首下方
+      let y = hdrBottom + 8;
+      if (sec.title) y = drawFeatureTitle(c, sec.title, y);
+      // 2.5 規則說明：標題下方、賠分格上方
+      if (sec.rules?.length) y = drawRulesReturn(c, sec.rules, y + 8, Number(cfg.ruleFontSize), contentBottom, Number(cfg.ruleFontSize) * baseLH);
+      // 3. 賠分格
+      y = drawPaytable(c, sec.paytableEntries, y + 10, contentBottom, sec.paytableLabel);
+      if (hasFtr) drawFooter(c, pg.footer);
+
+    } else {
+      // ── Normal symbol page ──────────────────────────────
+      const hdrBottom = drawHeader(c, pg.header);
+      let y = hdrBottom + 8 + Number(cfg.contentOffset);
+
+      if (secs.length === 1) {
+        const sec = secs[0];
+        if (sec.heroToken) {
+          y = drawHeroSymbol(c, sec.heroToken, y, Number(cfg.heroSize) * 1.1, Number(cfg.heroY));
+          y += Number(cfg.heroGap);
+        }
+        if (sec.title) y = drawSymbolTitle(c, sec.title, y);
+        if (sec.subHeader?.length) y = drawSubHeader(c, sec.subHeader, y + 6);
+        if (sec.rules?.length) drawRules(c, sec.rules, y + 18, Number(cfg.ruleFontSize), contentBottom,
+          Number(cfg.ruleFontSize) * baseLH);
+      } else {
+        for (let i = 0; i < secs.length; i++) {
+          const sec = secs[i];
+          // Each hero on a merged Symbol page keeps the full heroSize.
+          // The 0.65× compactSize was over-aggressive for typical 2-symbol merges.
+          const heroSz = Number(cfg.heroSize);
+          if (i > 0) {
+            c.save(); c.strokeStyle = 'rgba(200,150,70,0.25)'; c.lineWidth = 1;
+            c.beginPath(); c.moveTo(64 + 40, y); c.lineTo(L.W - 64 - 40, y);
+            c.stroke(); c.restore();
+            y += 14;
+          }
+          const prevHero = i > 0 ? secs[i-1].heroToken : null;
+          if (sec.heroToken && sec.heroToken !== prevHero) {
+            y = drawHeroSymbol(c, sec.heroToken, y, heroSz, Number(cfg.heroY));
+            y += Math.min(Number(cfg.heroGap), 20);
+          }
+          if (sec.title) y = drawSymbolTitle(c, sec.title, y);
+          if (sec.subHeader?.length) y = drawSubHeader(c, sec.subHeader, y + 4);
+          if (sec.rules?.length) y = drawRulesReturn(c, sec.rules, y + 14,
+              Math.max(14, Number(cfg.ruleFontSize) - 2), contentBottom,
+              Math.max(14, Number(cfg.ruleFontSize) - 2) * baseLH);
+          y += 16;
+        }
+      }
+      if (hasFtr) drawFooter(c, pg.footer);
+    }
+
+  } else {
+    // ── FEATURE PAGE ───────────────────────────────────────
+    const hasFullSizeImg = secs.some(sec => sec.rules?.some(r => isFullSizeLine(r)));
+    const hasPaytable    = secs.some(sec => sec.paytableEntries);
+
+    // ── Rich layout: expand line height / shrink wrap width when page has space ──
+    const available = contentBottom - 28;
+    let richLineH = Number(cfg.ruleFontSize) * baseLH;
+    let richMaxW  = 1700;
+    if (!hasFullSizeImg && !hasPaytable) {
+      const params = calcRichLayoutParams(secs, cfg, available, baseLH);
+      richLineH = params.lineH;
+      richMaxW  = params.maxW;
+    }
+
+    // ── Vertical centering ────────────────────────────────
+    // Now applies to full-size image pages too (measureFeatureContentH handles them)
+    // Only skip for paytable pages (grid height pre-determined)
+    let startY = 28;
+    if (!hasPaytable) {
+      const contentH  = measureFeatureContentH(secs, cfg, richLineH, richMaxW);
+      if (contentH < available * 0.85) {
+        const slack = available - contentH;
+        startY = Math.round(28 + slack * 0.40);
+      }
+    }
+
+    let y = startY;
+    if (secs.length === 1) {
+      const sec = secs[0];
+      if (sec.paytableEntries) {
+        if (sec.title) y = drawFeatureTitle(c, sec.title, y);
+        if (sec.subHeader?.length) y = drawSubHeader(c, sec.subHeader, y + 4);
+        // 規則說明在標題下方、賠分格上方
+        if (sec.rules?.length) y = drawRulesReturn(c, sec.rules, y + 8, Number(cfg.ruleFontSize), contentBottom, Number(cfg.ruleFontSize) * baseLH);
+        y = drawPaytable(c, sec.paytableEntries, y, contentBottom, sec.paytableLabel);
+      } else {
+        if (sec.title) y = drawFeatureTitle(c, sec.title, y);
+        if (sec.subHeader?.length) y = drawSubHeader(c, sec.subHeader, y + 4);
+        if (sec.heroToken) {
+          y = drawHeroSymbol(c, sec.heroToken, y + 10, Number(cfg.heroSize), Number(cfg.heroY));
+          y += Number(cfg.heroGap);
+        }
+        if (sec.rules?.length) drawRules(c, sec.rules, y + 18, Number(cfg.ruleFontSize), contentBottom, richLineH, richMaxW);
+      }
+    } else {
+      let heroDrawnOnPage = false;
+      // ── Unified pipe row height: all tables on this page share the same row height ──
+      S._pageUnifiedRowH = computePagePipeRowH(secs, startY, contentBottom, cfg, richLineH);
+
+      for (let si = 0; si < secs.length; si++) {
+        const sec = secs[si];
+        const prevHero = si > 0 ? secs[si - 1].heroToken : null;
+
+        if (sec.paytableEntries) {
+          if (sec.title) y = drawFeatureTitle(c, sec.title, y);
+          if (sec.subHeader?.length) y = drawSubHeader(c, sec.subHeader, y + 4);
+          if (sec.rules?.length) y = drawRulesReturn(c, sec.rules, y + 8, Number(cfg.ruleFontSize), contentBottom, Number(cfg.ruleFontSize) * baseLH);
+          y = drawPaytable(c, sec.paytableEntries, y, contentBottom, sec.paytableLabel);
+        } else {
+          if (sec.title) y = drawFeatureTitle(c, sec.title, y);
+          if (sec.subHeader?.length) y = drawSubHeader(c, sec.subHeader, y + 4);
+          const showHero = sec.heroToken && sec.heroToken !== prevHero;
+          if (showHero) {
+            // First hero on page: full size (150px). Subsequent different heroes: compact.
+            const sz = !heroDrawnOnPage
+              ? Number(cfg.heroSize)
+              : Number(cfg.heroSize) * 0.6;
+            y = drawHeroSymbol(c, sec.heroToken, y + 2, sz, Number(cfg.heroY));
+            y += 6;
+            heroDrawnOnPage = true;
+          }
+          if (sec.rules?.length) y = drawRulesReturn(c, sec.rules, y + 6, Number(cfg.ruleFontSize), contentBottom, richLineH, richMaxW);
+          y += 12;  // tight section gap for merged pages
+        }
+      }
+      S._pageUnifiedRowH = null;  // clear after multi-section render
+    }
+    if (hasFtr) drawFooter(c, pg.footer);
+  }
+
+  if (S.assets.logo) drawLogo(c);
+  drawBottomButtons(c);
+
+  if (cfg.showSafe) {
+    // Safe frame = actual content area: from SAFE_Y to contentBottom
+    c.save();
+    c.strokeStyle = 'rgba(0,255,120,.6)'; c.lineWidth = 2; c.setLineDash([14,6]);
+    c.strokeRect(L.SAFE_X, L.SAFE_Y, L.SAFE_W, contentBottom - L.SAFE_Y);
+    c.restore();
+  }
+  if (cfg.showAreas) {
+    c.save();
+    // ① Header zone: HDR_Y → SAFE_Y  (yellow)
+    c.fillStyle = 'rgba(255,210,0,.10)';
+    c.fillRect(L.SAFE_X, L.HDR_Y, L.SAFE_W, L.SAFE_Y - L.HDR_Y);
+    // ① Label
+    c.fillStyle = 'rgba(255,210,0,.55)'; c.font = 'bold 14px Arial';
+    c.textAlign = 'left'; c.textBaseline = 'top';
+    c.fillText('頁首區', L.SAFE_X + 8, L.HDR_Y + 4);
+
+    // ② Footer text zone: FTR_TOP → FTR_BOT  (cyan)
+    const ftrTop = hasFtr ? L.FTR_BOT - ftrH - 6 : L.FTR_BOT - 4;
+    c.fillStyle = 'rgba(0,210,255,.10)';
+    c.fillRect(L.SAFE_X, ftrTop, L.SAFE_W, L.FTR_BOT - ftrTop);
+    c.fillStyle = 'rgba(0,210,255,.55)'; c.font = 'bold 14px Arial';
+    c.fillText('頁尾區', L.SAFE_X + 8, ftrTop + 4);
+
+    // ③ Button zone: BTN_Y-BTN_H/2 → bottom  (red)
+    const btnZoneTop = L.BTN_Y - L.BTN_H / 2 - 4;
+    c.fillStyle = 'rgba(255,60,60,.12)';
+    c.fillRect(L.SAFE_X, btnZoneTop, L.SAFE_W, L.H - btnZoneTop);
+    c.fillStyle = 'rgba(255,60,60,.55)'; c.font = 'bold 14px Arial';
+    c.fillText('按鈕區', L.SAFE_X + 8, btnZoneTop + 4);
+
+    // ④ Content bottom guard line (orange dashed)
+    c.strokeStyle = 'rgba(255,140,0,.7)'; c.lineWidth = 1.5; c.setLineDash([8,4]);
+    c.beginPath(); c.moveTo(L.SAFE_X, contentBottom); c.lineTo(L.SAFE_X + L.SAFE_W, contentBottom); c.stroke();
+    c.fillStyle = 'rgba(255,140,0,.7)'; c.font = 'bold 12px Arial';
+    c.fillText('內容底線', L.SAFE_X + L.SAFE_W - 80, contentBottom - 16);
+    c.restore();
+  }
+}
+
+function drawLogo(c) {
+  const img = S.assets.logo;
+  const maxH = L.LOGO_MAX_H, ratio = img.width / img.height;
+  const h = Math.min(maxH, img.height), w = h * ratio;
+  c.drawImage(img, L.LOGO_R - w, L.LOGO_T, w, h);
+}
+
+// Content box border (for symbol pages)
+function drawContentBox(c, x, y, w, h) {
+  c.save();
+  c.strokeStyle = 'rgba(200,150,70,0.35)';
+  c.lineWidth = 2;
+  c.strokeRect(x, y, w, h);
+  c.restore();
+}
+
+// Header: 16pt Bold #ffe699, supports inline icons
+// ─────────────────────────────────────────────────────────
+// BALANCED LINE WRAP
+// Splits a pure-text string into 2 or 3 lines within maxLineW,
+// choosing whichever gives the most equal-length lines.
+// Always returns a flat array of strings.
+// ─────────────────────────────────────────────────────────
+function balancedWrapText(c, text, font, maxLineW) {
+  c.font = font;
+  const totalW = c.measureText(text).width;
+
+  // Fits on one line
+  if (totalW <= maxLineW) return [text];
+
+  const words = text.split(' ').filter(Boolean);
+  if (words.length <= 1) return [text];  // single word, can't split
+
+  // Build best N-line split using dynamic programming approach:
+  // target equal line widths = totalW / N
+  function trySplit(n) {
+    const target = totalW / n;
+    const lines = [];
+    let cur = '';
+    let curW = 0;
+    for (let wi = 0; wi < words.length; wi++) {
+      const word = words[wi];
+      const space = cur ? ' ' : '';
+      const addW = c.measureText(space + word).width;
+      // Flush current line if:
+      // - adding word would exceed target by more than half a word-width, AND
+      // - we still have room for more lines
+      if (cur && lines.length < n - 1 && curW + addW > target) {
+        // Check whether adding the word or not gives a width closer to target
+        const withWord    = curW + addW;
+        const withoutWord = curW;
+        if (Math.abs(withoutWord - target) <= Math.abs(withWord - target)) {
+          lines.push(cur);
+          cur = word;
+          curW = c.measureText(word).width;
+          continue;
+        }
+      }
+      cur  = cur ? cur + ' ' + word : word;
+      curW += addW;
+    }
+    if (cur) lines.push(cur);
+    return lines;
+  }
+
+  // Score: sum of squared deviations from mean width (lower = more balanced)
+  // Infinity if any line exceeds maxLineW
+  function score(lines) {
+    const widths = lines.map(l => c.measureText(l).width);
+    if (widths.some(w => w > maxLineW)) return Infinity;
+    const avg = widths.reduce((a, b) => a + b, 0) / widths.length;
+    return widths.reduce((s, w) => s + (w - avg) ** 2, 0);
+  }
+
+  const lines2 = trySplit(2);
+  const lines3 = trySplit(3);
+  const s2 = score(lines2);
+  const s3 = score(lines3);
+
+  // Prefer 2 lines unless 3 lines is clearly better (score < 0.6 × score2)
+  if (s3 < s2 * 0.6 && s3 !== Infinity) return lines3;
+  if (s2 !== Infinity) return lines2;
+  return lines3;  // fallback
+}
+
+function drawHeader(c, lines) {
+  const FS        = 20;
+  const BAL_MAX_W = 1200;  // balanced-wrap target width
+  const LINE_H    = FS * 1.8;
+  let y = L.HDR_Y;
+
+  for (const line of lines) {
+    if (!line) continue;
+    const segs = parseSegments(line);
+    if (segs.some(s => s.t !== 'txt')) {
+      // Mixed content (tokens): use fixed-width mixed wrap
+      y = drawMixedWrapped(c, segs, L.W/2, y, FS, '#ffe699', BAL_MAX_W, LINE_H);
+    } else {
+      // Pure text: balanced 2-or-3 line wrap within 1200px
+      const wrapped = balancedWrapText(c, line, `bold ${FS}px Arial`, BAL_MAX_W);
+      for (const wl of wrapped) {
+        c.save(); c.font = `bold ${FS}px Arial`; c.fillStyle = '#ffe699';
+        c.textAlign = 'center'; c.textBaseline = 'top';
+        c.fillText(wl, L.W/2, y); c.restore();
+        y += LINE_H;
+      }
+    }
+  }
+  return y + 10;
+}
+
+// Symbol title (SCATTER etc.) — 45pt gold gradient, below hero
+function drawSymbolTitle(c, text, y) {
+  if (!text) return y;
+  const fontSize = 45;
+  c.save();
+  const grad = c.createLinearGradient(0, y, 0, y + fontSize);
+  grad.addColorStop(0,    '#ffe566');
+  grad.addColorStop(0.45, '#ffaf3d');
+  grad.addColorStop(1,    '#c87800');
+  c.font = `bold ${fontSize}px Arial`;
+  c.fillStyle = grad;
+  c.textAlign = 'center'; c.textBaseline = 'top';
+  c.shadowColor = 'rgba(0,0,0,0.45)'; c.shadowBlur = 8; c.shadowOffsetY = 2;
+  c.fillText(text, L.W/2, y);
+  c.restore();
+  return y + fontSize + 14;
+}
+
+// Title for feature pages (FREE GAME FEATURE etc.) — large, gold gradient, at top
+function drawFeatureTitle(c, text, y) {
+  if (!text) return y;
+  const fontSize = 55;
+  c.save();
+  // Gold gradient
+  const grad = c.createLinearGradient(0, y, 0, y + fontSize);
+  grad.addColorStop(0, '#ffe566');
+  grad.addColorStop(0.45, '#ffaf3d');
+  grad.addColorStop(1,  '#c87800');
+  c.font = `bold ${fontSize}px Arial`;
+  c.fillStyle = grad;
+  c.textAlign = 'center'; c.textBaseline = 'top';
+  c.shadowColor = 'rgba(0,0,0,0.55)'; c.shadowBlur = 10; c.shadowOffsetY = 3;
+  c.fillText(text, L.W/2, y);
+  c.restore();
+  return y + fontSize + 18;
+}
+
+// Sub-header (below-title description, e.g. PAYTABLE sub-lines)
+function drawSubHeader(c, lines, y) {
+  if (!lines?.length) return y;
+  c.save();
+  c.font = 'bold 16px Arial'; c.fillStyle = '#ffffff';
+  c.textAlign = 'center'; c.textBaseline = 'top';
+  const lh = 22;
+  for (const line of lines) {
+    if (!line) continue;
+    const segs = parseSegments(line);
+    if (segs.some(s => s.t !== 'txt')) {
+      y = drawInlineSegs(c, segs, L.W/2, y, 16, '#ffffff') + 4;
+    } else {
+      const wrapped = wrapText(c, line, 'bold 16px Arial', L.W - 130);
+      for (const wl of wrapped) { c.fillText(wl, L.W/2, y); y += lh; }
+    }
+  }
+  c.restore();
+  return y + 6;
+}
+
+// drawRulesReturn: same as drawRules but returns final y position
+function drawRulesReturn(c, rawLines, startY, fontSize, maxY, overrideLH, overrideMaxW) {
+  const lines = rawLines.flatMap(l =>
+    (l && String(l).includes('\n'))
+      ? String(l).split(/\r?\n/).map(s => s.trim())
+      : [l]
+  );
+  const maxW   = overrideMaxW || 1700;
+  const cx     = L.W / 2;
+  const availForLines = maxY ? (maxY - startY) : (fontSize * 1.8 * 20);
+  const LINE_H = overrideLH || (maxY
+    ? calcOptimalLineH(lines, fontSize, availForLines)
+    : fontSize * 1.8);
+  let y = startY;
+  let i = 0;
+  while (i < lines.length) {
+    if (maxY && y + fontSize > maxY - 2) break;
+    const line = lines[i];
+    if (isScoreLine(line)) {
+      const block = [line];
+      i++;
+      while (i < lines.length) {
+        const next = lines[i];
+        if (next === '' || next === null || next === undefined) { i++; continue; }
+        if (isScoreLine(next)) { block.push(next); i++; }
+        else break;
+      }
+      y = drawScoreTable(c, block, y, fontSize);
+      continue;
+    }
+    if (!line) { y += LINE_H * 0.5; i++; continue; }
+    const segs = parseSegments(line);
+    if (!segs.some(s => s.t !== 'txt')) {
+      const wrapped = wrapText(c, line, `bold ${fontSize}px Arial`, maxW);
+      for (const wl of wrapped) {
+        if (maxY && y + fontSize > maxY - 2) break;
+        c.save(); c.font = `bold ${fontSize}px Arial`; c.fillStyle = '#ffffff';
+        c.textAlign = 'center'; c.textBaseline = 'top'; c.fillText(wl, cx, y); c.restore();
+        y += LINE_H;
+      }
+    } else {
+      y = drawMixedWrapped(c, segs, cx, y, fontSize, '#ffffff', maxW, LINE_H);
+    }
+    i++;
+  }
+  return y;
+}
+
+function drawHeroSymbol(c, token, y, size, yOff) {
+  const img = getIcon(token);
+  const ty = y + yOff;
+  if (img) {
+    const w = size * (img.width / img.height);
+    c.drawImage(img, (L.W - w) / 2, ty, w, size);
+    return ty + size;
+  } else {
+    const x = (L.W - size) / 2;
+    c.save();
+    c.fillStyle = 'rgba(255,175,61,.12)';
+    c.strokeStyle = 'rgba(255,175,61,.4)';
+    c.lineWidth = 2;
+    c.fillRect(x, ty, size, size);
+    c.strokeRect(x, ty, size, size);
+    c.fillStyle = 'rgba(255,175,61,.55)';
+    c.font = 'bold 15px Arial';
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(`[${token}]`, L.W/2, ty + size/2);
+    c.restore();
+    return ty + size;
+  }
+}
+
+// Score-table line: starts with {N}-{N} (full-width or half-width braces)
+// Permissive: allow any leading whitespace, any dash variant, any suffix
+// ─────────────────────────────────────────────────────────
+// PIPE TABLE RENDERER  v2
+// Auto-shrinks font size until the table fits within MAX_W.
+// Each cell supports multi-line wrapping; row height is dynamic.
+// Header row (row 0) uses gold background and wraps if needed.
+// ─────────────────────────────────────────────────────────
+
+function isPipeRow(line) {
+  if (!line || !line.trim()) return false;
+  return line.includes('｜') || line.includes('|');
+}
+
+function splitPipeRow(line) {
+  return line.split(/[｜|]/).map(c => c.trim());
+}
+
+// Measure a cell's single-line pixel width at given fontSize
+function measureCellW(ctx, cell, fontSize) {
+  const segs = parseSegments(cell);
+  ctx.font = `bold ${fontSize}px Arial`;
+  let w = 0;
+  for (const s of segs) {
+    if (s.t === 'txt') {
+      w += ctx.measureText(s.v).width;
+    } else if (s.t === 'tok') {
+      const img = getIcon(s.v);
+      const iconH = fontSize * 1.3;
+      w += (img ? iconH * (img.width / img.height) : iconH) + 16;
+    } else if (s.t === 'nbr' || s.t === 'num') {
+      const nfs = Math.round(fontSize * 1.25);
+      ctx.font = `bold ${nfs}px Arial`;
+      w += ctx.measureText(s.t === 'nbr' ? ' ' + s.v + ' ' : s.v).width;
+      ctx.font = `bold ${fontSize}px Arial`;
+    }
+  }
+  return w;
+}
+
+// Wrap a cell's plain text to fit within colW at fontSize
+// Returns array of lines; tokens/numbers are treated as single atoms
+function wrapCellContent(ctx, cell, colW, fontSize) {
+  const segs = parseSegments(cell);
+  ctx.font = `bold ${fontSize}px Arial`;
+  const innerW = colW - 24; // 12px padding each side
+
+  // Build atom list: {text, w}
+  const atoms = [];
+  for (const s of segs) {
+    if (s.t === 'txt') {
+      // Split on spaces to allow word-wrap
+      const words = s.v.split(/(?<= )/);
+      for (const w of words) {
+        if (w) {
+          ctx.font = `bold ${fontSize}px Arial`;
+          atoms.push({ v: w, t: 'txt', w: ctx.measureText(w).width });
+        }
+      }
+    } else {
+      const aw = measureCellW(ctx, s.t === 'tok' ? `[${s.v}]`
+        : s.t === 'nbr' ? `{${s.v}}` : s.v, fontSize);
+      atoms.push({ ...s, w: aw });
+    }
+  }
+
+  // Pack atoms into lines
+  const lines = [[]];
+  let lineW = 0;
+  for (const atom of atoms) {
+    if (lineW > 0 && lineW + atom.w > innerW) {
+      lines.push([]);
+      lineW = 0;
+    }
+    lines[lines.length - 1].push(atom);
+    lineW += atom.w;
+  }
+  return lines;
+}
+
+// Draw one wrapped line of cell atoms, centred or left-aligned
+function drawAtomLine(c, atoms, lineX, lineY, lineH, fontSize, colIdx) {
+  const totalW = atoms.reduce((s, a) => s + a.w, 0);
+  // col 0 = left-align; others = centre
+  let x = colIdx === 0 ? lineX : lineX + (lineX < 0 ? 0 : 0); // placeholder, corrected below
+
+  // Recalculate x based on colX and colW passed via closure — use atom line
+  // This function is called with pre-computed x already, just draw from it
+  let ax = lineX;
+  c.textBaseline = 'top';
+  for (const atom of atoms) {
+    const sy = lineY + (lineH - fontSize) / 2;
+    if (atom.t === 'txt') {
+      c.font = `bold ${fontSize}px Arial`; c.fillStyle = '#ffffff'; c.textAlign = 'left';
+      c.fillText(atom.v, ax, sy);
+    } else if (atom.t === 'tok') {
+      const img = atom.img || getIcon(atom.v);
+      const iconH = Math.round(fontSize * 1.3 * 0.85);
+      const iy = lineY + (lineH - iconH) / 2 - iconH * 0.18;
+      const aspect = img ? img.width / img.height : 1;
+      if (img) c.drawImage(img, ax + 6, iy, iconH * aspect, iconH);
+      else {
+        c.fillStyle = 'rgba(255,175,61,.2)'; c.strokeStyle = 'rgba(255,175,61,.6)'; c.lineWidth = 1;
+        rrect(c, ax + 6, iy, iconH, iconH, 3); c.fill(); c.stroke();
+        c.fillStyle = '#ffaf3d'; c.font = `bold ${Math.round(iconH * 0.4)}px Arial`;
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.fillText(atom.v, ax + 6 + iconH/2, iy + iconH/2);
+      }
+    } else if (atom.t === 'nbr') {
+      const nfs = Math.round(fontSize * 1.25);
+      c.font = `bold ${nfs}px Arial`; c.fillStyle = '#fcdd0c'; c.textAlign = 'left';
+      c.fillText(' ' + atom.v + ' ', ax, lineY + (lineH - nfs) / 2);
+    } else if (atom.t === 'num') {
+      const nfs = Math.round(fontSize * 1.25);
+      c.font = `bold ${nfs}px Arial`; c.fillStyle = '#fcdd0c'; c.textAlign = 'left';
+      c.fillText(atom.v, ax, lineY + (lineH - nfs) / 2);
+    }
+    ax += atom.w;
+  }
+}
+
+// Content-based alignment decision for pipe table cells.
+// Sentence (left-align): 3+ words, or contains comma (list of values), or long text.
+// Otherwise (centre): single number, short label, token-only.
+function isCellSentence(cell) {
+  if (!cell || !cell.trim()) return false;
+  const segs  = parseSegments(cell);
+  const words = segs
+    .filter(s => s.t === 'txt' && s.v.trim())
+    .map(s => s.v.trim())
+    .join(' ')
+    .split(/\s+/)
+    .filter(Boolean);
+  if (words.length === 0) return false;        // token-only → centre
+  if (words.length <= 3 && !cell.includes(',')) return false;  // 1-3 words, no comma → centre
+  return true;                                 // sentence or list → left
+}
+
+function drawPipeTable(c, rows, y, maxY, baseFontSize) {
+  if (!rows.length) return y;
+
+  const cells  = rows.map(splitPipeRow);
+  const nCols  = Math.max(...cells.map(r => r.length));
+  const HARD_MAX_W = Math.min(1790, L.W - 60);  // absolute upper bound
+  const MIN_COL_W  = 60;                          // each column at least 60px
+  const COL_PAD    = 24;                          // h-padding per cell (12 each side)
+  const MIN_FS     = 11;
+  const PAD_V      = 10;
+
+  const tmp = document.createElement('canvas').getContext('2d');
+
+  // ── Step 1: find font size + natural column widths ─────────────────
+  let fontSize = Math.min(baseFontSize, 22);
+  let naturalColW = [];   // content-driven widths (no inflation)
+
+  while (fontSize >= MIN_FS) {
+    const mins = Array(nCols).fill(0);
+    for (const row of cells) {
+      for (let ci = 0; ci < nCols; ci++) {
+        const cell = row[ci] || '';
+        const w = measureCellW(tmp, cell, fontSize) + COL_PAD;
+        if (w > mins[ci]) mins[ci] = w;
+      }
+    }
+    // Enforce minimum column width
+    const clamped = mins.map(w => Math.max(w, MIN_COL_W));
+    const totalNat = clamped.reduce((a, v) => a + v, 0);
+
+    if (totalNat <= HARD_MAX_W) {
+      naturalColW = clamped;
+      break;
+    }
+    fontSize -= 1;
+  }
+
+  // Fallback: proportional scale-down to fit hard max
+  if (!naturalColW.length) {
+    const mins = Array(nCols).fill(0);
+    for (const row of cells) {
+      for (let ci = 0; ci < nCols; ci++) {
+        const cell = row[ci] || '';
+        const w = measureCellW(tmp, cell, MIN_FS) + COL_PAD;
+        if (w > mins[ci]) mins[ci] = w;
+      }
+    }
+    const total = mins.reduce((a, v) => a + v, 0);
+    const scale = HARD_MAX_W / total;
+    naturalColW = mins.map(w => Math.max(Math.floor(w * scale), MIN_COL_W));
+    fontSize = MIN_FS;
+  }
+
+  // ── Step 2: decide final table width ─────────────────────────────
+  // Use natural width. Apply a modest cap so very narrow tables
+  // (e.g. 2 short columns) don't look lost on the wide canvas.
+  // Rule: table width = max(naturalTotal, min(HARD_MAX_W, naturalTotal * 1.25))
+  // This gives up to 25% extra breathing room but never forces full width.
+  const naturalTotal = naturalColW.reduce((a, v) => a + v, 0);
+  const targetW = Math.min(HARD_MAX_W, Math.max(naturalTotal, naturalTotal * 1.25));
+
+  // Distribute the extra proportionally so wider columns absorb more
+  const extra = targetW - naturalTotal;
+  const colW = naturalColW.map(w => Math.floor(w + extra * (w / naturalTotal)));
+
+  // Fix rounding drift on last column
+  const actualTotal = colW.reduce((a, v) => a + v, 0);
+  colW[colW.length - 1] += Math.round(targetW - actualTotal);
+
+  const TBL_X = Math.round((L.W - colW.reduce((a, v) => a + v, 0)) / 2);
+
+  // ── Step 2: wrap each cell and compute row heights ─────────────────
+  let lineH = fontSize * 1.15 + 4; // single line height within a cell
+  const wrappedCells = cells.map(row =>
+    row.map((cell, ci) => wrapCellContent(tmp, cell, colW[ci], fontSize))
+  );
+  let rowHeights = wrappedCells.map(row => {
+    const maxLines = Math.max(...row.map(c => c.length), 1);
+    return maxLines * lineH + PAD_V * 2;
+  });
+
+  // ── Step 2b: if table is taller than available space, scale row height down ──
+  // Never clip rows — shrink uniformly until everything fits.
+  if (maxY) {
+    const availForTable = maxY - y;
+    const totalH = rowHeights.reduce((a, v) => a + v, 0);
+    if (totalH > availForTable && availForTable > 0) {
+      const scale = availForTable / totalH;
+      lineH = Math.max(fontSize * 0.85 + 2, lineH * scale);  // min ~85% of fontSize
+      rowHeights = wrappedCells.map(row => {
+        const maxLines = Math.max(...row.map(c => c.length), 1);
+        return Math.max(maxLines * lineH + 4, fontSize + 6);  // never below readable
+      });
+    }
+  }
+
+  // ── Step 2c: expansion pass ───────────────────────────────────────
+  // After scale-down, the minimum-height floor often leaves significant empty space
+  // below the table. Redistribute that slack proportionally so rows breathe more.
+  // Cap at 1.8× current height; only fire if gain ≥ 6%.
+  if (maxY) {
+    const expandAvail   = maxY - y;
+    const currentTotalH = rowHeights.reduce((a, v) => a + v, 0);
+    if (currentTotalH < expandAvail * 0.85) {
+      const expandScale = Math.min((expandAvail * 0.92) / currentTotalH, 1.8);
+      if (expandScale >= 1.06) {
+        rowHeights = rowHeights.map(rh => Math.round(rh * expandScale));
+      }
+    }
+  }
+
+  // ── Step 2d: apply page-unified row height ───────────────
+  // All pipe tables on the same page share a single target average row height,
+  // so upper/lower tables look visually consistent.
+  if (S._pageUnifiedRowH && rowHeights.length > 0) {
+    const targetH   = S._pageUnifiedRowH;
+    const currentAvg = rowHeights.reduce((s, h) => s + h, 0) / rowHeights.length;
+    if (Math.abs(currentAvg - targetH) > 1) {
+      const scale  = targetH / currentAvg;
+      const scaled = rowHeights.map(rh => Math.round(rh * scale));
+      const total  = scaled.reduce((s, h) => s + h, 0);
+      // Apply only if the scaled table still fits within maxY
+      if (!maxY || total <= maxY - y + 2) {
+        rowHeights = scaled;
+      }
+    }
+  }
+
+  // ── Step 3: render all rows ────────────────────────────────────────
+  const BORDER   = 'rgba(180,130,50,0.60)';
+  const HDR_BG   = 'rgba(140,90,0,0.55)';
+  const ALT_BG   = 'rgba(255,255,255,0.04)';
+
+  c.save();
+  let rowY = y;
+  for (let ri = 0; ri < cells.length; ri++) {
+    if (maxY && rowY + rowHeights[ri] > maxY + 2) {
+      // Safety: still flag if somehow a row doesn't fit (should not happen after scaling)
+      S.clippingDetected = true;
+      break;
+    }
+    const rh = rowHeights[ri];
+    const isHeader = ri === 0 ||
+      // Repeated header: all cells match the first row's cells
+      (cells[0].length === cells[ri].length &&
+       cells[0].every((cell, ci) =>
+         cell.trim().toLowerCase() === (cells[ri][ci] || '').trim().toLowerCase()
+       ));
+    let colX = TBL_X;
+
+    for (let ci = 0; ci < nCols; ci++) {
+      const cw = colW[ci];
+      // Background
+      c.fillStyle = isHeader ? HDR_BG : (ri % 2 === 1 ? ALT_BG : 'transparent');
+      c.fillRect(colX, rowY, cw, rh);
+      // Border
+      c.strokeStyle = BORDER; c.lineWidth = 1;
+      c.strokeRect(colX, rowY, cw, rh);
+
+      // Draw wrapped lines
+      const wrLines = wrappedCells[ri][ci] || [[]];
+      const totalLinesH = wrLines.length * lineH;
+      const startLineY  = rowY + (rh - totalLinesH) / 2;
+
+      for (let li = 0; li < wrLines.length; li++) {
+        const atoms  = wrLines[li];
+        const lineY  = startLineY + li * lineH;
+        const atomsW = atoms.reduce((s, a) => s + a.w, 0);
+        // Content-based alignment:
+        //   header row → always left-align (bold label)
+        //   sentence / comma-list → left-align
+        //   number / short label / token → centre
+        const cellText  = cells[ri][ci] || '';
+        const leftAlign = !isHeader && isCellSentence(cellText);
+        const startX    = leftAlign
+          ? colX + 12
+          : colX + (cw - atomsW) / 2;
+        drawAtomLine(c, atoms, startX, lineY, lineH, fontSize, leftAlign ? 0 : 1);
+      }
+      colX += cw;
+    }
+    rowY += rh;
+  }
+  c.restore();
+  return rowY + 12;
+}
+// ─────────────────────────────────────────────────────────
+// DASH DIVIDER  —  10+ consecutive dash/minus chars = <hr>
+// ─────────────────────────────────────────────────────────
+function isDashLine(line) {
+  if (!line || !line.trim()) return false;
+  return /[-－—─]{10,}/.test(line.trim());
+}
+
+function drawDivider(c, y) {
+  c.save();
+  c.strokeStyle = 'rgba(200,150,60,0.65)'; c.lineWidth = 1.5;
+  // Solid line (no dash)
+  c.beginPath(); c.moveTo(80, y + 6); c.lineTo(L.W - 80, y + 6); c.stroke();
+  c.restore();
+  return y + 18;
+}
+
+// ─────────────────────────────────────────────────────────
+// IMPLICIT 2-COLUMN TABLE
+// Lines with 3+ consecutive spaces in the middle are treated as
+// a 2-column layout (left tokens/text, right tokens/text).
+// Column widths are content-based and the whole block is centred.
+// ─────────────────────────────────────────────────────────
+function parseImplicitCols(line) {
+  if (!line || !line.trim()) return null;
+  const parts = line.split(/[ \u3000]{3,}/);
+  if (parts.length < 2) return null;
+  const left  = parts[0].trim();
+  const right = parts[parts.length - 1].trim();
+  if (!right) return null;
+  return { left, right };
+}
+
+function isImplicitTableRow(line) { return !!parseImplicitCols(line); }
+
+// Measure pixel width of a content string (text + tokens)
+function measureColW(ctx, text, fontSize) {
+  if (!text) return 0;
+  const segs = parseSegments(text);
+  ctx.font = `bold ${fontSize}px Arial`;
+  let w = 0;
+  for (const s of segs) {
+    if (s.t === 'txt') { w += ctx.measureText(s.v).width; }
+    else if (s.t === 'tok') {
+      const img = getIcon(s.v);
+      const iconH = fontSize * 1.95;
+      w += (img ? iconH * (img.width / img.height) : iconH) + 16;
+    } else if (s.t === 'nbr' || s.t === 'num') {
+      const nfs = Math.round(fontSize * 1.25);
+      ctx.font = `bold ${nfs}px Arial`;
+      w += ctx.measureText(s.t === 'nbr' ? ' ' + s.v + ' ' : s.v).width;
+      ctx.font = `bold ${fontSize}px Arial`;
+    }
+  }
+  return Math.ceil(w);
+}
+
+function drawImplicitTable(c, rows, y, maxY, fontSize) {
+  const LINE_H  = fontSize * 1.8;
+  const GAP     = 60;   // gap between the two columns
+  const PAD     = 20;   // outer padding each side
+
+  // ── Measure natural column widths across ALL rows (incl. header) ──
+  const tmp = document.createElement('canvas').getContext('2d');
+  let maxLeftW = 0, maxRightW = 0;
+  for (const row of rows) {
+    if (row.isDivider) continue;
+    const lw = measureColW(tmp, row.left,  fontSize);
+    const rw = measureColW(tmp, row.right, fontSize);
+    if (lw > maxLeftW)  maxLeftW  = lw;
+    if (rw > maxRightW) maxRightW = rw;
+  }
+  const LEFT_W   = maxLeftW  + PAD * 2;
+  const RIGHT_W  = maxRightW + PAD * 2;
+  const totalW   = LEFT_W + GAP + RIGHT_W;
+
+  // Centre the two-column block on the canvas
+  const LEFT_X   = (L.W - totalW) / 2;
+  const RIGHT_X  = LEFT_X + LEFT_W + GAP;
+
+  c.save();
+  for (const row of rows) {
+    if (maxY && y + fontSize > maxY - 2) break;
+
+    // ── Divider row ───────────────────────────────────────
+    if (row.isDivider) {
+      // Draw divider spanning exactly the two columns
+      c.strokeStyle = 'rgba(200,150,60,0.65)'; c.lineWidth = 1.5;
+      c.beginPath(); c.moveTo(LEFT_X, y + 6); c.lineTo(LEFT_X + totalW, y + 6); c.stroke();
+      y += 18;
+      continue;
+    }
+
+    const color = row.isHeader ? '#ffaf3d' : '#ffffff';
+
+    // ── Left column ───────────────────────────────────────
+    if (row.left) {
+      const segs = parseSegments(row.left);
+      if (segs.some(s => s.t !== 'txt')) {
+        drawMixedWrapped(c, segs, LEFT_X + LEFT_W / 2, y, fontSize, color, LEFT_W, LINE_H);
+      } else {
+        c.font = `bold ${fontSize}px Arial`; c.fillStyle = color;
+        c.textAlign = 'center'; c.textBaseline = 'top';
+        c.fillText(row.left, LEFT_X + LEFT_W / 2, y + (LINE_H - fontSize) / 2);
+      }
+    }
+
+    // ── Right column ──────────────────────────────────────
+    if (row.right) {
+      const segs = parseSegments(row.right);
+      if (segs.some(s => s.t !== 'txt')) {
+        drawMixedWrapped(c, segs, RIGHT_X + RIGHT_W / 2, y, fontSize, color, RIGHT_W, LINE_H);
+      } else {
+        c.font = `bold ${fontSize}px Arial`; c.fillStyle = color;
+        c.textAlign = 'center'; c.textBaseline = 'top';
+        c.fillText(row.right, RIGHT_X + RIGHT_W / 2, y + (LINE_H - fontSize) / 2);
+      }
+    }
+
+    y += LINE_H;
+  }
+  c.restore();
+  return y + 6;
+}
+
+// ─────────────────────────────────────────────────────────
+// SCORE TABLE — segment-based detection (no regex encoding risk)
+// ─────────────────────────────────────────────────────────
+function isScoreLine(line) {
+  if (!line || !line.trim()) return false;
+  const segs = parseSegments(line);
+  if (segs.length < 3) return false;
+  return segs[0].t === 'nbr' &&
+    segs[1].t === 'txt' && segs[1].v.replace(/[\s　]/g, '').match(/^[-–—－]+$/) &&
+    segs[2].t === 'nbr';
+}
+
+function drawScoreTable(c, rawLines, y, fontSize) {
+  // Expand any cells with embedded newlines before processing
+  const lines = rawLines.flatMap(l =>
+    (l && String(l).includes('\n'))
+      ? String(l).split(/\r?\n/).map(s => s.trim()).filter(Boolean)
+      : [l]
+  );
+
+  const BLOCK_W = 500;
+  const blockX  = (L.W - BLOCK_W) / 2;
+  const numFS   = Math.round(fontSize * 1.45);
+  const LINE_H  = numFS * 1.8;  // match rules line height rhythm
+
+  c.save();
+  for (const line of lines) {
+    if (!line || !line.trim()) continue;
+    const segs = parseSegments(line);
+    if (segs.length < 3 || segs[0].t !== 'nbr' || segs[2].t !== 'nbr') continue;
+
+    const left   = segs[0].v;
+    const right  = segs[2].v;
+    const suffix = segs.slice(3).map(s => s.v).join('').replace(/^[\s　]+/, '');
+
+    let x = blockX;
+    c.textBaseline = 'top';
+    c.font = `bold ${numFS}px Arial`; c.fillStyle = '#fcdd0c'; c.textAlign = 'left';
+    const leftStr = left + ' - ';
+    c.fillText(leftStr, x, y);
+    x += c.measureText(leftStr).width;
+    c.fillText(right, x, y);
+    x += c.measureText(right).width + 14;
+    if (suffix) {
+      c.font = `bold ${Math.round(fontSize * 0.92)}px Arial`; c.fillStyle = '#ffffff';
+      c.fillText(suffix, x, y + (numFS - Math.round(fontSize * 0.92)) / 2);
+    }
+    y += LINE_H;
+  }
+  c.restore();
+  return y + 10;
+}
+
+// ─────────────────────────────────────────────────────────
+// PAYTABLE RENDERER  v3
+// Row 1: up to 5 main symbols (WW M1 M2 M3 M4 M5)
+// Row 2: up to 6 card symbols (A K Q J 10 9)
+// Each column: icon (≤140×140) once at top + pay rows left-aligned below
+// ─────────────────────────────────────────────────────────
+function drawPaytable(c, entries, startY, contentBottom, label) {
+  if (!entries || !entries.length) return startY;
+
+  const MARGIN_X  = 80;
+  const TOTAL_W   = L.W - MARGIN_X * 2;
+  const ICON_GAP  = 8;
+  const ROW_GAP   = 20;
+  const PAY_FS    = 24;
+  const PAY_LH    = Math.round(PAY_FS * 1.4);
+
+  // Calculate how much vertical space is available for both rows
+  const availH = contentBottom - startY;
+
+  // Split: row1 = first 5, row2 = remaining (up to 6)
+  const row1 = entries.slice(0, Math.min(5, entries.length));
+  const row2 = entries.length > 5 ? entries.slice(5) : null;
+  const symbolRows = row2 ? [row1, row2] : [row1];
+
+  // Determine icon size: fit both rows if needed
+  const maxPaysAll = Math.max(...entries.map(e => e.pays.length));
+  const numRows    = symbolRows.length;
+  // Each row: iconH + ICON_GAP + maxPays*PAY_LH + ROW_GAP
+  let iconH = 140;
+  for (let tryH = 140; tryH >= 60; tryH -= 10) {
+    const rowH = tryH + ICON_GAP + maxPaysAll * PAY_LH;
+    if (rowH * numRows + ROW_GAP * (numRows - 1) <= availH) {
+      iconH = tryH;
+      break;
+    }
+    iconH = tryH;
+  }
+
+  // ── Calculate row heights ──────────────────────────────
+  const rowHeights = symbolRows.map(rowEntries => {
+    const maxPays = Math.max(...rowEntries.map(e => e.pays.length));
+    return iconH + ICON_GAP + maxPays * PAY_LH;
+  });
+  const totalRowH    = rowHeights.reduce((a, v) => a + v, 0);
+  const INTER_ROW_GAP = 16;                                    // tight gap between the two rows
+  const totalContentH = totalRowH + INTER_ROW_GAP * (symbolRows.length - 1);
+  const slack         = Math.max(0, availH - totalContentH);
+
+  // Weight: 35% above first row, 8% between rows (absorbed into INTER), 57% below
+  let y = startY + Math.round(slack * 0.35);
+
+  c.save();
+
+  for (let ri = 0; ri < symbolRows.length; ri++) {
+    const rowEntries = symbolRows[ri];
+    const rowH       = rowHeights[ri];
+    const cols       = rowEntries.length;
+
+    if (y + rowH > contentBottom) break;
+
+    // ── Natural column widths: content-based, not evenly distributed ──
+    const tmp2 = document.createElement('canvas').getContext('2d');
+    tmp2.font  = `bold ${PAY_FS}px Arial`;
+    const natColW = rowEntries.map(entry => {
+      // Icon width
+      const img    = getIcon(entry.token);
+      const aspect = img ? img.width / img.height : 1;
+      const imgW   = img
+        ? Math.min(iconH * aspect, (L.W - MARGIN_X * 2) / cols - 10)
+        : iconH;
+      // Widest pay line
+      let payW = 0;
+      for (const pay of entry.pays) {
+        const w = tmp2.measureText(`${pay.count} - ${pay.value}`).width;
+        if (w > payW) payW = w;
+      }
+      // Column = max(icon, pay) + horizontal padding
+      return Math.ceil(Math.max(imgW, payW) + 40);
+    });
+
+    // Total natural width; cap at TOTAL_W and scale proportionally if over
+    const totalNat = natColW.reduce((a, v) => a + v, 0);
+    const maxRowW  = L.W - MARGIN_X * 2;
+    const colW = totalNat <= maxRowW
+      ? natColW
+      : natColW.map(w => Math.floor(w * maxRowW / totalNat));
+
+    const rowW   = colW.reduce((a, v) => a + v, 0);
+    const rowX   = (L.W - rowW) / 2;   // centre the row horizontally
+
+    for (let ci = 0; ci < cols; ci++) {
+      const entry = rowEntries[ci];
+      const colX  = rowX + colW.slice(0, ci).reduce((a, v) => a + v, 0);
+      const cw    = colW[ci];
+      const img   = getIcon(entry.token);
+
+      // ── Icon ──────────────────────────────────────────────
+      if (img) {
+        const aspect = img.width / img.height;
+        let iw, ih;
+        if (aspect >= 1) { iw = Math.min(iconH * aspect, cw - 10); ih = iw / aspect; }
+        else             { ih = iconH; iw = ih * aspect; }
+        if (ih > iconH) { ih = iconH; iw = ih * aspect; }
+        c.drawImage(img, colX + (cw - iw) / 2, y + (iconH - ih) / 2, iw, ih);
+      } else {
+        const sz = Math.min(iconH, cw - 12);
+        const px = colX + (cw - sz) / 2;
+        c.save();
+        c.fillStyle = 'rgba(255,175,61,.12)';
+        c.strokeStyle = 'rgba(255,175,61,.4)'; c.lineWidth = 1.5;
+        rrect(c, px, y, sz, sz, 6); c.fill(); c.stroke();
+        c.fillStyle = '#ffaf3d'; c.font = `bold ${Math.max(11, sz * 0.2)}px Arial`;
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.fillText(entry.token, px + sz/2, y + sz/2);
+        c.restore();
+      }
+
+      // ── Pay lines ─────────────────────────────────────────
+      c.font = `bold ${PAY_FS}px Arial`;
+      let blockW = 0;
+      for (const pay of entry.pays) {
+        const w = c.measureText(`${pay.count} - ${pay.value}`).width;
+        if (w > blockW) blockW = w;
+      }
+      blockW = Math.min(blockW + 4, cw - 8);
+      const payX = colX + (cw - blockW) / 2;
+      let py = y + iconH + ICON_GAP;
+      for (const pay of entry.pays) {
+        const countStr = `${pay.count} - `;
+        c.textBaseline = 'top'; c.textAlign = 'left';
+        c.font = `bold ${PAY_FS}px Arial`; c.fillStyle = '#ffffff';
+        c.fillText(countStr, payX, py);
+        c.fillStyle = '#fcdd0c';
+        c.fillText(String(pay.value), payX + c.measureText(countStr).width, py);
+        py += PAY_LH;
+      }
+    }
+
+    y += rowH + (ri < symbolRows.length - 1 ? INTER_ROW_GAP : 0);
+  }
+
+  // ── Trailing label (e.g. "OF A KIND") ──────────────────
+  // Rendered centred across all columns, aligned with bottom row
+  if (label && label.trim()) {
+    const LABEL_FS = 20;
+    const labelY   = y - ROW_GAP + 8;  // just below last row's content
+    c.save();
+    c.font = `bold ${LABEL_FS}px Arial`; c.fillStyle = '#ffffff';
+    c.textAlign = 'center'; c.textBaseline = 'top';
+    c.fillText(label.trim(), L.W / 2, labelY);
+    c.restore();
+    y = labelY + LABEL_FS + 10;
+  }
+
+  c.restore();
+  return y - ROW_GAP + 8;
+}
+
+// ─────────────────────────────────────────────────────────
+// AUTO LINE-HEIGHT OPTIMIZER (item 4)
+// After layout estimation, if space remains expand LINE_H up to fontSize*2
+// ─────────────────────────────────────────────────────────
+// calcOptimalLineH: accounts for score table entries taking fixed height
+// Pass EXPANDED lines (after \n split), and subtract score table space first
+function calcOptimalLineH(expandedLines, fontSize, availH) {
+  const BASE_LH   = fontSize * 1.8;
+  const MAX_LH    = fontSize * 2.0;
+  const numFS     = Math.round(fontSize * 1.45);
+  const SCORE_LH  = numFS * 1.8;   // score table uses its own line height
+
+  const tmp = document.createElement('canvas').getContext('2d');
+  tmp.font = `bold ${fontSize}px Arial`;
+
+  let scoreH = 0;         // total height taken by score table blocks
+  let regularLines = 0;   // total rendered lines for regular text
+  let i = 0;
+
+  while (i < expandedLines.length) {
+    const line = expandedLines[i];
+    if (!line) { regularLines += 0.5; i++; continue; }
+
+    if (isScoreLine(line)) {
+      let blockCount = 0;
+      while (i < expandedLines.length) {
+        const n = expandedLines[i];
+        if (!n || !n.trim()) { i++; continue; }
+        if (isScoreLine(n)) { blockCount++; i++; }
+        else break;
+      }
+      scoreH += blockCount * SCORE_LH + 10;  // +10 for trailing gap in drawScoreTable
+    } else {
+      const wrapped = wrapText(tmp, line, `bold ${fontSize}px Arial`, 1700);
+      regularLines += wrapped.length;
+      i++;
+    }
+  }
+
+  const remainH = availH - scoreH;
+  if (regularLines <= 0 || remainH <= 0) return BASE_LH;
+  const optH = remainH / regularLines;
+  return Math.min(MAX_LH, Math.max(BASE_LH, optH));
+}
+
+// ─────────────────────────────────────────────────────────
+// FULL-SIZE IMAGE LINE (示意圖)
+// A line is a "full-size image line" if it contains exactly one token
+// whose name includes '示意圖', and nothing else meaningful.
+// These must be drawn as a standalone centred block, NOT inline,
+// so that the following rule text starts below the image bottom.
+// ─────────────────────────────────────────────────────────
+function isFullSizeLine(line) {
+  if (!line || !line.trim()) return false;
+  const segs = parseSegments(line);
+  const meaningful = segs.filter(s => !(s.t === 'txt' && !s.v.trim()));
+  return meaningful.length === 1 &&
+         meaningful[0].t === 'tok' &&
+         meaningful[0].v.includes('示意圖');
+}
+
+// Estimate total height needed for rule lines AFTER fromIndex
+// Used to constrain full-size image so all rules still fit on the page
+function estimateRemainingRulesH(lines, fromIndex, fontSize) {
+  const LINE_H = fontSize * 1.8;
+  const tmp = document.createElement('canvas').getContext('2d');
+  tmp.font = `bold ${fontSize}px Arial`;
+  let h = 0;
+  for (let j = fromIndex; j < lines.length; j++) {
+    const l = lines[j];
+    if (!l) { h += LINE_H * 0.4; continue; }
+    if (isFullSizeLine(l)) continue;
+    if (isScoreLine(l)) { h += Math.round(fontSize * 1.45) * 1.8 + 10; continue; }
+    const wrapped = wrapText(tmp, l, `bold ${fontSize}px Arial`, 1700);
+    h += wrapped.length * LINE_H;
+  }
+  return Math.ceil(h) + 20; // +20 = gap that follows the image
+}
+
+// Draw a full-size 示意圖 centred on the canvas.
+// maxHeight: if provided, scale image down so rules below can fit.
+function drawFullSizeImageLine(c, token, y, maxHeight) {
+  const img = getIcon(token);
+  const cap = (maxHeight != null && maxHeight > 60) ? maxHeight : Infinity;
+
+  if (!img) {
+    const pw = Math.min(L.W - 40, 800);
+    const ph = cap === Infinity ? 300 : Math.max(60, Math.min(300, cap));
+    const x  = (L.W - pw) / 2;
+    c.save();
+    c.fillStyle = 'rgba(255,175,61,.1)';
+    c.strokeStyle = 'rgba(255,175,61,.4)'; c.lineWidth = 2;
+    rrect(c, x, y, pw, ph, 8); c.fill(); c.stroke();
+    c.fillStyle = '#ffaf3d'; c.font = 'bold 18px Arial';
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(`[${token}]`, L.W / 2, y + ph / 2);
+    c.restore();
+    return y + ph;
+  }
+
+  let iw = img.width, ih = img.height;
+  const maxW = L.W - 40;
+  if (iw > maxW) { ih = Math.round(ih * maxW / iw); iw = maxW; }
+  if (ih > cap)  { iw = Math.round(iw * cap / ih);  ih = Math.round(cap); }
+
+  const x = (L.W - iw) / 2;
+  c.drawImage(img, x, y, iw, ih);
+  return y + ih;
+}
+
+function drawRules(c, rawLines, startY, fontSize, maxY, overrideLH, overrideMaxW) {
+  const lines = rawLines.flatMap(l =>
+    (l && String(l).includes('\n'))
+      ? String(l).split(/\r?\n/).map(s => s.trim())
+      : [l]
+  );
+
+  const maxW   = overrideMaxW || 1700;
+  const cx     = L.W / 2;
+  const availForLines = maxY ? (maxY - startY) : (fontSize * 1.8 * 20);
+  // Use override LINE_H if provided (rich layout), else calculate optimally
+  const LINE_H = overrideLH || (maxY
+    ? calcOptimalLineH(lines, fontSize, availForLines)
+    : fontSize * 1.8);
+  let y = startY;
+  let i = 0;
+  while (i < lines.length) {
+    if (maxY && y + fontSize > maxY - 2) break;  // tight guard, contentBottom already has buffer
+    const line = lines[i];
+    if (isScoreLine(line)) {
+      const block = [line]; i++;
+      while (i < lines.length) {
+        const n = lines[i];
+        if (!n || !n.trim()) { i++; continue; }
+        if (isScoreLine(n)) { block.push(n); i++; } else break;
+      }
+      y = drawScoreTable(c, block, y, fontSize);
+      continue;
+    }
+    // ── Pipe table block ───────────────────────────────────
+    if (isPipeRow(line)) {
+      const block = [line]; i++;
+      while (i < lines.length) {
+        const n = lines[i];
+        if (!n || !n.trim()) break;
+        if (isPipeRow(n)) { block.push(n); i++; } else break;
+      }
+      y = drawPipeTable(c, block, y, maxY, fontSize);
+      continue;
+    }
+    // ── Dash divider (standalone) ────────────────────────
+    // If preceded by no implicit rows and not followed by them → simple divider
+    if (isDashLine(line)) { y = drawDivider(c, y); i++; continue; }
+    // ── Implicit 2-column table (header + optional divider + data rows) ──
+    // Look-ahead: collect all contiguous implicit rows including any embedded dash
+    if (isImplicitTableRow(line)) {
+      const block = [];
+      while (i < lines.length) {
+        const n = lines[i];
+        if (!n || !n.trim()) break;
+        if (isDashLine(n)) {
+          block.push({ isDivider: true }); i++; continue;
+        }
+        if (isPipeRow(n) || isScoreLine(n)) break;
+        const cols = parseImplicitCols(n);
+        if (!cols) break;
+        const isHdr = !parseSegments(n).some(s => s.t === 'tok');
+        block.push({ ...cols, isHeader: isHdr });
+        i++;
+      }
+      if (block.length) { y = drawImplicitTable(c, block, y, maxY, fontSize); }
+      continue;
+    }
+    // ── Full-size 示意圖 — standalone centred block ────────
+    if (isFullSizeLine(line)) {
+      const tok = parseSegments(line).find(s => s.t === 'tok').v;
+      // Calculate max height so all remaining rules still fit on this page
+      const remainH   = maxY ? estimateRemainingRulesH(lines, i + 1, fontSize) : Infinity;
+      const maxImgH   = maxY ? Math.max(80, (maxY - y - 20) - remainH) : Infinity;
+      y = drawFullSizeImageLine(c, tok, y, maxImgH);
+      y += 20;
+      i++; continue;
+    }
+    if (!line) { y += LINE_H * 0.5; i++; continue; }
+    const segs = parseSegments(line);
+    if (!segs.some(s => s.t !== 'txt')) {
+      const wrapped = wrapText(c, line, `bold ${fontSize}px Arial`, maxW);
+      for (const wl of wrapped) {
+        if (maxY && y + fontSize > maxY - 2) break;
+        c.save(); c.font = `bold ${fontSize}px Arial`; c.fillStyle = '#ffffff';
+        c.textAlign = 'center'; c.textBaseline = 'top'; c.fillText(wl, cx, y); c.restore();
+        y += LINE_H;
+      }
+    } else {
+      y = drawMixedWrapped(c, segs, cx, y, fontSize, '#ffffff', maxW, LINE_H);
+    }
+    i++;
+  }
+  // ── Clipping audit: any non-empty lines left unrendered? ──
+  if (maxY && i < lines.length) {
+    const remaining = lines.slice(i).some(l => l && String(l).trim());
+    if (remaining) S.clippingDetected = true;
+  }
+}
+
+function drawRulesReturn(c, rawLines, startY, fontSize, maxY, overrideLH, overrideMaxW) {
+  const lines = rawLines.flatMap(l =>
+    (l && String(l).includes('\n'))
+      ? String(l).split(/\r?\n/).map(s => s.trim())
+      : [l]
+  );
+  const maxW   = overrideMaxW || 1700;
+  const cx     = L.W / 2;
+  const LINE_H = overrideLH || fontSize * 1.8;
+  let y = startY;
+  let i = 0;
+  while (i < lines.length) {
+    if (maxY && y + fontSize > maxY - 2) break;
+    const line = lines[i];
+    if (isScoreLine(line)) {
+      const block = [line]; i++;
+      while (i < lines.length) {
+        const n = lines[i];
+        if (!n || !n.trim()) { i++; continue; }
+        if (isScoreLine(n)) { block.push(n); i++; } else break;
+      }
+      y = drawScoreTable(c, block, y, fontSize);
+      continue;
+    }
+    // ── Pipe table block ───────────────────────────────────
+    if (isPipeRow(line)) {
+      const block = [line]; i++;
+      while (i < lines.length) {
+        const n = lines[i];
+        if (!n || !n.trim()) break;
+        if (isPipeRow(n)) { block.push(n); i++; } else break;
+      }
+      y = drawPipeTable(c, block, y, maxY, fontSize);
+      continue;
+    }
+    // ── Dash divider (standalone) ────────────────────────
+    // If preceded by no implicit rows and not followed by them → simple divider
+    if (isDashLine(line)) { y = drawDivider(c, y); i++; continue; }
+    // ── Implicit 2-column table (header + optional divider + data rows) ──
+    // Look-ahead: collect all contiguous implicit rows including any embedded dash
+    if (isImplicitTableRow(line)) {
+      const block = [];
+      while (i < lines.length) {
+        const n = lines[i];
+        if (!n || !n.trim()) break;
+        if (isDashLine(n)) {
+          block.push({ isDivider: true }); i++; continue;
+        }
+        if (isPipeRow(n) || isScoreLine(n)) break;
+        const cols = parseImplicitCols(n);
+        if (!cols) break;
+        const isHdr = !parseSegments(n).some(s => s.t === 'tok');
+        block.push({ ...cols, isHeader: isHdr });
+        i++;
+      }
+      if (block.length) { y = drawImplicitTable(c, block, y, maxY, fontSize); }
+      continue;
+    }
+    // ── Full-size 示意圖 — standalone centred block ────────
+    if (isFullSizeLine(line)) {
+      const tok     = parseSegments(line).find(s => s.t === 'tok').v;
+      const remainH = maxY ? estimateRemainingRulesH(lines, i + 1, fontSize) : Infinity;
+      const maxImgH = maxY ? Math.max(80, (maxY - y - 20) - remainH) : Infinity;
+      y = drawFullSizeImageLine(c, tok, y, maxImgH);
+      y += 20;
+      i++; continue;
+    }
+    if (!line) { y += LINE_H * 0.5; i++; continue; }
+    const segs = parseSegments(line);
+    if (!segs.some(s => s.t !== 'txt')) {
+      const wrapped = wrapText(c, line, `bold ${fontSize}px Arial`, maxW);
+      for (const wl of wrapped) {
+        if (maxY && y + fontSize > maxY - 2) break;
+        c.save(); c.font = `bold ${fontSize}px Arial`; c.fillStyle = '#ffffff';
+        c.textAlign = 'center'; c.textBaseline = 'top'; c.fillText(wl, cx, y); c.restore();
+        y += LINE_H;
+      }
+    } else {
+      y = drawMixedWrapped(c, segs, cx, y, fontSize, '#ffffff', maxW, LINE_H);
+    }
+    i++;
+  }
+  // ── Clipping audit ──
+  if (maxY && i < lines.length) {
+    const remaining = lines.slice(i).some(l => l && String(l).trim());
+    if (remaining) S.clippingDetected = true;
+  }
+  return y;
+}
+
+// ─────────────────────────────────────────────────────────
+// MIXED-CONTENT LINE RENDERER (with word-wrap)
+// Handles text + [token] + {num} + number in one centred line,
+// automatically breaking into multiple canvas rows when total
+// width exceeds maxW.
+// ─────────────────────────────────────────────────────────
+
+// Measure one segment's pixel width (does NOT draw)
+function segW(c, seg, fontSize) {
+  // iconH drives the ASPECT RATIO for width calc; actual draw height is clamped in drawMixedWrapped
+  const iconH   = fontSize * 1.95;   // 1.3 × 1.5  — used for width proportion only
+  const reportH = fontSize * 1.10;   // height reported for flow — stays within LINE_H
+  const TOK_PAD = 8;
+  if (seg.t === 'txt') {
+    c.font = `bold ${fontSize}px Arial`;
+    return { w: c.measureText(seg.v).width, h: fontSize };
+  }
+  if (seg.t === 'tok') {
+    const img = getIcon(seg.v);
+    const isFullSize = seg.v.includes('示意圖');
+    if (isFullSize && img) {
+      return { w: img.width + TOK_PAD * 2, h: img.height, img, pad: TOK_PAD, rawW: img.width, fullSize: true };
+    }
+    const rawW = img ? iconH * (img.width / img.height) : iconH;
+    return { w: rawW + TOK_PAD * 2, h: reportH, img, pad: TOK_PAD, rawW, iconH };
+  }
+  if (seg.t === 'nbr') {
+    const nfs = Math.round(fontSize * 1.25);
+    c.font = `bold ${nfs}px Arial`;
+    return { w: c.measureText(' ' + seg.v + ' ').width, h: nfs };
+  }
+  if (seg.t === 'num') {
+    const nfs = Math.round(fontSize * 1.25);
+    c.font = `bold ${nfs}px Arial`;
+    return { w: c.measureText(seg.v).width, h: nfs };
+  }
+  return { w: 0, h: fontSize };
+}
+
+// Split a 'txt' segment's text into word-tokens for re-flowing
+function splitTxtWords(text) {
+  // Split on spaces but keep trailing space on each word for natural spacing
+  const parts = text.split(/(?<= )/);  // split after space
+  // fallback for browsers that don't support lookbehind
+  if (parts.length === 1 && text.includes(' ')) {
+    const out = [];
+    text.split(' ').forEach((w, i, a) => out.push(w + (i < a.length-1 ? ' ' : '')));
+    return out;
+  }
+  return parts;
+}
+
+// Core: break segments into visual rows, then draw each row centred.
+// Returns the new y after all rows.
+function drawMixedWrapped(c, segs, cx, y, fontSize, textColor, maxW, fixedLineH) {
+  const iconH  = fontSize * 1.3;
+  const LINE_H = fixedLineH || (fontSize * 1.8);  // use caller's fixed height or default
+
+  // Expand text segments into word-level atoms for reflowing
+  const atoms = [];
+  for (const seg of segs) {
+    if (seg.t === 'txt') {
+      const words = splitTxtWords(seg.v);
+      for (const w of words) {
+        if (w) atoms.push({ t: 'txt', v: w });
+      }
+    } else {
+      atoms.push(seg);
+    }
+  }
+
+  // Measure every atom
+  const measured = atoms.map(a => {
+    const m = segW(c, a, fontSize);
+    return { ...a, ...m };
+  });
+
+  // Pack atoms into rows
+  const rows = [];
+  let row = [], rowW = 0;
+  for (const m of measured) {
+    if (row.length > 0 && rowW + m.w > maxW) {
+      rows.push(row);
+      // strip leading space from first atom of new row
+      const trimmed = { ...m };
+      if (trimmed.t === 'txt' && trimmed.v.startsWith(' ')) {
+        trimmed.v = trimmed.v.trimStart();
+        const remeasured = segW(c, trimmed, fontSize);
+        trimmed.w = remeasured.w;
+      }
+      row = [trimmed]; rowW = trimmed.w;
+    } else {
+      row.push(m); rowW += m.w;
+    }
+  }
+  if (row.length) rows.push(row);
+
+  // ── Orphan-line fix ─────────────────────────────────────
+  // If the last line is visually lonely (only a token + punctuation,
+  // or fewer than 3 meaningful atoms), pull 3 word-atoms from the
+  // previous line down to keep it company.
+  if (rows.length >= 2) {
+    const last = rows[rows.length - 1];
+    const prev = rows[rows.length - 2];
+    // Count "meaningful" atoms on the last line (non-whitespace text or tokens)
+    const meaningful = last.filter(a =>
+      a.t === 'tok' || a.t === 'nbr' || a.t === 'num' ||
+      (a.t === 'txt' && a.v.trim().length > 0)
+    );
+    const isOrphan = meaningful.length <= 2 ||
+      (meaningful.length === 2 && meaningful[0].t === 'tok' &&
+       meaningful[1].t === 'txt' && /^[.,;:!?。．，！？]/.test(meaningful[1].v));
+
+    if (isOrphan && prev.length > 3) {
+      // Move last 3 word-atoms from prev → prepend to last
+      let moved = 0;
+      while (moved < 3 && prev.length > 1) {
+        const atom = prev.pop();
+        // skip pure-space atoms
+        if (atom.t === 'txt' && !atom.v.trim()) continue;
+        last.unshift(atom);
+        moved++;
+      }
+    }
+  }
+
+  // Draw each row centred
+  c.save();
+  for (const r of rows) {
+    const totalW = r.reduce((s, m) => s + m.w, 0);
+    // rowH is ALWAYS LINE_H — never let icon heights expand the row
+    const rowH = LINE_H;
+    let x = cx - totalW / 2;
+
+    for (const seg of r) {
+      c.textBaseline = 'top';
+      if (seg.t === 'txt') {
+        // Vertically centre text within rowH
+        const sy = y + (rowH - fontSize) / 2;
+        c.font = `bold ${fontSize}px Arial`; c.fillStyle = textColor; c.textAlign = 'left';
+        c.fillText(seg.v, x, sy);
+      } else if (seg.t === 'tok') {
+        const img = seg.img || getIcon(seg.v);
+        const pad   = seg.pad  || 0;
+        const allocW = seg.rawW || (seg.w - pad * 2);
+
+        if (seg.fullSize && img) {
+          // 示意圖: render at original full size, vertically centred in row
+          const sy   = y + (rowH - img.height) / 2;
+          const drawX = x + pad + (allocW - img.width) / 2;
+          c.drawImage(img, drawX, sy, img.width, img.height);
+        } else {
+          const textBottom  = y + (LINE_H + fontSize) / 2;
+          const rawIconH    = (seg.iconH || seg.h * 1.95) * 0.85;
+          const drawH = Math.min(rawIconH, textBottom - y - 2);
+          // Align icon centre slightly above row centre, closer to text cap-height midpoint
+          // Shift up by 18% of drawH for natural optical alignment
+          const drawY = y + (LINE_H - drawH) / 2 - Math.round(drawH * 0.18);
+
+          if (img) {
+            const aspect  = img.width / img.height;
+            const actualW = drawH * aspect;
+            const drawX   = x + pad + (allocW - actualW) / 2; // h-centre within alloc
+            c.drawImage(img, drawX, drawY, actualW, drawH);
+          } else {
+            const drawW = Math.min(allocW, drawH * 2.0);
+            const drawX = x + pad + (allocW - drawW) / 2;
+            c.save();
+            c.fillStyle   = 'rgba(255,175,61,.22)';
+            c.strokeStyle = 'rgba(255,175,61,.75)';
+            c.lineWidth   = 1.5;
+            rrect(c, drawX, drawY, drawW, drawH, 4); c.fill(); c.stroke();
+            c.fillStyle = '#ffaf3d';
+            c.font      = `bold ${Math.max(10, Math.round(drawH * 0.40))}px Arial`;
+            c.textAlign = 'center'; c.textBaseline = 'middle';
+            c.fillText(seg.v, drawX + drawW / 2, drawY + drawH / 2);
+            c.restore();
+          }
+        }
+      } else if (seg.t === 'nbr') {
+        const nfs = Math.round(fontSize * 1.25);
+        const sy = y + (rowH - nfs) / 2;
+        c.font = `bold ${nfs}px Arial`; c.fillStyle = '#fcdd0c'; c.textAlign = 'left';
+        c.fillText(' ' + seg.v + ' ', x, sy);
+      } else if (seg.t === 'num') {
+        const nfs = Math.round(fontSize * 1.25);
+        const sy = y + (rowH - nfs) / 2;
+        c.font = `bold ${nfs}px Arial`; c.fillStyle = '#fcdd0c'; c.textAlign = 'left';
+        c.fillText(seg.v, x, sy);
+      }
+      x += seg.w;
+    }
+    y += LINE_H;  // fixed advance — never affected by icon height
+  }
+  c.restore();
+  return y;
+}
+
+// Legacy single-row inline (kept for header icon use)
+function drawInlineSegs(c, segs, cx, y, fontSize, textColor = '#ffffff') {
+  return drawMixedWrapped(c, segs, cx, y, fontSize, textColor, L.W - 130);
+}
+
+// Footer: 16pt Bold #ffe699, anchored above buttons, drawn bottom-up
+function drawFooter(c, lines) {
+  const FS        = 16;
+  const BAL_MAX_W = 1200;  // balanced-wrap target width
+  const lh        = Math.round(FS * 1.35);  // compact for legal notice text
+  c.save();
+  c.font = `bold ${FS}px Arial`;
+
+  // First pass: expand all lines using balanced wrap
+  const allWrapped = [];
+  for (const line of lines) {
+    if (!line) { allWrapped.push(''); continue; }
+    const segs = parseSegments(line);
+    if (segs.some(s => s.t !== 'txt')) {
+      // Mixed: store the segs for a second-pass draw
+      allWrapped.push({ mixed: true, segs, line });
+    } else {
+      const wrapped = balancedWrapText(c, line, `bold ${FS}px Arial`, BAL_MAX_W);
+      allWrapped.push(...wrapped);
+    }
+  }
+
+  const totalH = allWrapped.length * lh;
+  let y = L.FTR_BOT - totalH;
+  c.fillStyle = '#ffe699'; c.textAlign = 'center'; c.textBaseline = 'top';
+
+  for (const item of allWrapped) {
+    if (!item) { y += lh; continue; }
+    if (typeof item === 'object' && item.mixed) {
+      y = drawMixedWrapped(c, item.segs, L.W/2, y, FS, '#ffe699', BAL_MAX_W, lh);
+    } else {
+      c.fillText(item, L.W/2, y);
+      y += lh;
+    }
+  }
+  c.restore();
+}
+
+// ── Bottom navigation buttons ──────────────────────────────
+function drawBottomButtons(c) {
+  const cy = L.BTN_Y;
+  const bH = L.BTN_H;
+
+  // Center: RETURN TO GAME
+  const rtgW = 380, rtgH = bH;
+  const rtgX = (L.W - rtgW) / 2;
+  drawPillBtn(c, rtgX, cy - rtgH/2, rtgW, rtgH, 'RETURN TO GAME', 20);
+
+  // Left arrow
+  const aW = 66, aH = 66;
+  drawArrowBtn(c, rtgX - aW - 24, cy - aH/2, aW, aH, '◀');
+
+  // Right arrow
+  drawArrowBtn(c, rtgX + rtgW + 24, cy - aH/2, aW, aH, '▶');
+}
+
+function drawPillBtn(c, x, y, w, h, label, fs) {
+  const r = h / 2;
+  c.save();
+  const grad = c.createLinearGradient(x, y, x, y + h);
+  grad.addColorStop(0, '#e83535'); grad.addColorStop(0.5, '#b01010'); grad.addColorStop(1, '#7a0a0a');
+  rrect(c, x, y, w, h, r); c.fillStyle = grad; c.fill();
+  c.strokeStyle = 'rgba(255,180,120,0.55)'; c.lineWidth = 2.5; c.stroke();
+  c.font = `bold ${fs}px Arial`; c.fillStyle = '#ffffff';
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.shadowColor = 'rgba(0,0,0,0.5)'; c.shadowBlur = 5;
+  c.fillText(label, x + w/2, y + h/2);
+  c.restore();
+}
+
+function drawArrowBtn(c, x, y, w, h, arrow) {
+  const r = Math.min(w, h) / 2;
+  c.save();
+  const grad = c.createRadialGradient(x+w/2, y+h/2, 2, x+w/2, y+h/2, r);
+  grad.addColorStop(0, '#e83535'); grad.addColorStop(1, '#7a0a0a');
+  rrect(c, x, y, w, h, r); c.fillStyle = grad; c.fill();
+  c.strokeStyle = 'rgba(255,180,120,0.55)'; c.lineWidth = 2.5; c.stroke();
+  c.font = `bold ${Math.round(h*0.42)}px Arial`; c.fillStyle = '#ffffff';
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText(arrow, x + w/2, y + h/2);
+  c.restore();
+}
+
+function rrect(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.lineTo(x + w - r, y); c.arcTo(x+w, y, x+w, y+r, r);
+  c.lineTo(x + w, y + h - r); c.arcTo(x+w, y+h, x+w-r, y+h, r);
+  c.lineTo(x + r, y + h); c.arcTo(x, y+h, x, y+h-r, r);
+  c.lineTo(x, y + r); c.arcTo(x, y, x+r, y, r);
+  c.closePath();
+}
+
+// Word-wrap helper
+function wrapText(c, text, font, maxW) {
+  c.font = font;
+  if (c.measureText(text).width <= maxW) return [text];
+  const words = text.split(' ');
+  const lines = []; let cur = '';
+  for (const w of words) {
+    const test = cur ? cur + ' ' + w : w;
+    if (c.measureText(test).width > maxW && cur) { lines.push(cur); cur = w; }
+    else cur = test;
+  }
+  if (cur) lines.push(cur);
+  return lines.length ? lines : [text];
+}
+
+// ─────────────────────────────────────────────────────────
+// NAVIGATION
+// ─────────────────────────────────────────────────────────
+function navPage(d) {
+  const n = S.cur + d;
+  if (n < 0 || n >= S.pages.length) return;
+  S.cur = n; draw(); refreshPageList();
+}
+function goPage(i) { S.cur = i; draw(); refreshPageList(); }
+
+// ─────────────────────────────────────────────────────────
+// UI REFRESH
+// ─────────────────────────────────────────────────────────
+function refreshAll() { refreshPageList(); refreshTokenList(); draw(); }
+
+// ─────────────────────────────────────────────────────────
+// COMPACT MODE
+// Overrides ruleFontSize (24→20) and BASE_LH (1.8→1.6).
+// All other layout logic unchanged. Toggle re-renders and
+// re-runs splitLongSection to update page count.
+// ─────────────────────────────────────────────────────────
+function toggleCompact() {
+  S.compactMode = !S.compactMode;
+  const btn  = document.getElementById('btnCompact');
+  const hint = document.getElementById('compactHint');
+  if (S.compactMode) {
+    btn.textContent = '📐 緊湊模式：開';
+    btn.style.background  = 'rgba(245,158,11,0.25)';
+    btn.style.borderColor = '#f59e0b';
+    btn.style.color       = '#f59e0b';
+    hint.style.display = 'block';
+  } else {
+    btn.textContent = '📐 緊湊模式：關';
+    btn.style.background  = '';
+    btn.style.borderColor = '';
+    btn.style.color       = '';
+    hint.style.display = 'none';
+  }
+  // Rebuild pages with effective cfg so splitLongSection re-evaluates
+  if (S._rawRows) {
+    // Preferred: rebuild from original Excel rows
+    S.pages = buildPages(S._rawRows);
+  } else if (S.pages.length) {
+    // Fallback: rebuild from existing pages by re-packing their sections
+    // Group sections by (group + serialised header + footer)
+    const groupMap = new Map();
+    for (const pg of S.pages) {
+      const key = pg.group + '||' + JSON.stringify(pg.header) + '||' + JSON.stringify(pg.footer);
+      if (!groupMap.has(key)) {
+        groupMap.set(key, { group: pg.group, header: pg.header, footer: pg.footer, sections: [] });
+      }
+      for (const sec of (pg.sections || [])) {
+        groupMap.get(key).sections.push(sec);
+      }
+    }
+    const newPages = [];
+    for (const g of groupMap.values()) {
+      if (g.sections.some(s => s.paytableEntries)) {
+        // Paytable groups: keep each section as its own page
+        for (const sec of g.sections) {
+          newPages.push({ group: g.group, header: g.header, footer: g.footer, sections: [sec] });
+        }
+      } else if (g.group?.includes('轉輪示意')) {
+        // Reel diagram: 2 per page
+        for (let i = 0; i < g.sections.length; i += 2) {
+          newPages.push({ group: g.group, header: g.header, footer: g.footer,
+            sections: g.sections.slice(i, i + 2), reelLayout: true });
+        }
+      } else {
+        packIntoPages(g.sections, g.header, g.footer, g.group, newPages);
+      }
+    }
+    S.pages = newPages;
+  }
+  S.cur = Math.min(S.cur, Math.max(0, S.pages.length - 1));
+  savePagesToStorage();
+  refreshAll();
+  const totalPages = S.pages.length;
+  setStatus(S.compactMode
+    ? `緊湊模式：共 ${totalPages} 頁（字體 20pt，行距 1.7）`
+    : `一般模式：共 ${totalPages} 頁（字體 24pt，行距 1.8）`);
+}
+
+// Returns cfg with compact overrides applied if compactMode is on
+function getEffectiveCfg() {
+  if (!S.compactMode) return S.cfg;
+  return {
+    ...S.cfg,
+    ruleFontSize: 20,         // compact font size
+    _compactLH:   1.7,        // compact line height multiplier
+  };
+}
+// Renders every page to an off-screen canvas, relying on the
+// S.clippingDetected flag set by drawRules / drawRulesReturn.
+// ─────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────
+// DIFF / COMPARISON ENGINE
+// ─────────────────────────────────────────────────────────
+
+function extractTextSnapshot(pages) {
+  const snapshot = [];
+  for (let pi = 0; pi < pages.length; pi++) {
+    const pg = pages[pi];
+    const pageLines = [];
+    for (const line of (pg.header || [])) {
+      if (line) pageLines.push({ text: line.trim() });
+    }
+    for (let si = 0; si < (pg.sections || []).length; si++) {
+      const sec = pg.sections[si];
+      if (sec.title) pageLines.push({ text: `[TITLE] ${sec.title.trim()}` });
+      for (const line of (sec.subHeader || [])) {
+        if (line) pageLines.push({ text: line.trim() });
+      }
+      for (let ri = 0; ri < (sec.rules || []).length; ri++) {
+        if (sec.rules[ri]) {
+          const expanded = String(sec.rules[ri]).split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+          for (const l of expanded) pageLines.push({ text: l });
+        }
+      }
+      for (const entry of (sec.paytableEntries || [])) {
+        pageLines.push({ text: `${entry.token}: ${entry.pays.map(p=>p.count+'-'+p.value).join(', ')}` });
+      }
+    }
+    for (const line of (pg.footer || [])) {
+      if (line) pageLines.push({ text: line.trim() });
+    }
+    snapshot.push({ pageIdx: pi, group: pg.group, lines: pageLines });
+  }
+  return snapshot;
+}
+
+function diffLines(oldLines, newLines) {
+  const result = [];
+  const ot = oldLines.map(l => l.text);
+  const nt = newLines.map(l => l.text);
+  const m = ot.length, n = nt.length;
+  const dp = Array.from({length: m+1}, () => new Uint16Array(n+1));
+  for (let i=m-1;i>=0;i--) for (let j=n-1;j>=0;j--)
+    dp[i][j] = ot[i]===nt[j] ? dp[i+1][j+1]+1 : Math.max(dp[i+1][j], dp[i][j+1]);
+  let i=0, j=0;
+  while (i<m || j<n) {
+    if (i<m && j<n && ot[i]===nt[j]) {
+      result.push({type:'=', text:ot[i]}); i++; j++;
+    } else if (j<n && (i>=m || dp[i+1]?.[j] <= dp[i]?.[j+1])) {
+      result.push({type:'+', text:nt[j]}); j++;
+    } else {
+      result.push({type:'-', text:ot[i]}); i++;
+    }
+  }
+  return result;
+}
+
+function openDiffPanel() {
+  // Reset to clean state every time panel is opened
+  document.getElementById('diffSummary').style.display = 'none';
+  document.getElementById('diffSummary').innerHTML = '';
+  document.getElementById('diffContent').innerHTML = `
+    <div style="text-align:center;padding:60px 0;color:#556">
+      <div style="font-size:40px;margin-bottom:12px">📋</div>
+      <p style="margin:0;font-size:14px">載入新版 Excel 檔案，系統自動比對與底稿的差異</p>
+      <p style="margin:6px 0 0;font-size:11px;color:#445">底稿 = 目前已載入的頁面資料</p>
+    </div>`;
+  const count = S.pages.length;
+  document.getElementById('diffSubtitle').textContent =
+    count ? `底稿：${count} 頁（目前已載入資料）・載入新 Excel 以比對差異` : '請先載入 Excel 底稿';
+  document.getElementById('diffOverlay').style.display = 'block';
+}
+
+function closeDiffPanel() {
+  document.getElementById('diffOverlay').style.display = 'none';
+}
+
+function runDiff(inp) {
+  const file = inp.files[0]; if (!file) return;
+  const content = document.getElementById('diffContent');
+  content.innerHTML = '<div style="text-align:center;padding:40px;color:#8899aa">⏳ 解析比對中…</div>';
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'binary' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const newRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+      const newPages = buildPages(newRows);
+      const oldSnap = extractTextSnapshot(S.pages);
+      const newSnap = extractTextSnapshot(newPages);
+      // Store pending new data for one-click replace
+      S._pendingRows  = newRows;
+      S._pendingPages = newPages;
+      S._pendingName  = file.name;
+      renderDiffResult(oldSnap, newSnap);
+    } catch(err) {
+      content.innerHTML = `<p style="color:#f87171;padding:20px">解析失敗：${err.message}</p>`;
+    }
+  };
+  reader.readAsBinaryString(file);
+}
+
+function renderDiffResult(oldSnap, newSnap) {
+  const content = document.getElementById('diffContent');
+  const summary = document.getElementById('diffSummary');
+  const maxPages = Math.max(oldSnap.length, newSnap.length);
+  let totalAdded = 0, totalRemoved = 0, changedPages = 0;
+  let html = '';
+
+  for (let pi = 0; pi < maxPages; pi++) {
+    const oldPg = oldSnap[pi];
+    const newPg = newSnap[pi];
+    const label = newPg?.group || oldPg?.group || `頁 ${pi+1}`;
+
+    if (!oldPg) {
+      changedPages++; totalAdded += newPg.lines.length;
+      html += diffPageBlock(pi+1, label, newPg.lines.map(l=>({type:'+',text:l.text})));
+      continue;
+    }
+    if (!newPg) {
+      changedPages++; totalRemoved += oldPg.lines.length;
+      html += diffPageBlock(pi+1, label, oldPg.lines.map(l=>({type:'-',text:l.text})));
+      continue;
+    }
+
+    const diffs = diffLines(oldPg.lines, newPg.lines);
+    if (!diffs.some(d => d.type !== '=')) continue;
+    changedPages++;
+    totalAdded   += diffs.filter(d=>d.type==='+').length;
+    totalRemoved += diffs.filter(d=>d.type==='-').length;
+    html += diffPageBlock(pi+1, label, diffs);
+  }
+
+  if (!html) {
+    summary.style.display = 'none';
+    content.innerHTML = `<div style="text-align:center;padding:60px;color:#4ade80">
+      <div style="font-size:40px;margin-bottom:12px">✅</div>
+      <p style="margin:0;font-size:16px;font-weight:700">兩版內容完全一致，無差異</p></div>`;
+    document.getElementById('diffSubtitle').textContent = '比對完成：無差異';
+    return;
+  }
+
+  summary.style.display = 'block';
+  summary.innerHTML = `⚠️ 共 <b>${changedPages}</b> 頁有差異・
+    <span style="color:#4ade80">＋${totalAdded} 行新增／修改</span>・
+    <span style="color:#f87171">－${totalRemoved} 行刪除／修改前</span>`;
+  content.innerHTML = html + `
+    <div style="text-align:center;padding:20px 0 8px;border-top:1px solid #334;margin-top:8px">
+      <p style="color:#8899aa;font-size:12px;margin:0 0 12px">確認差異無誤後，點下方按鈕一鍵更新</p>
+      <button onclick="applyNewExcel()" style="background:#b45309;border:none;color:#fff;padding:11px 32px;border-radius:7px;font-size:14px;font-weight:700;cursor:pointer">
+        ⚡ 確認以新 Excel 取代舊版
+      </button>
+    </div>`;
+  document.getElementById('diffSubtitle').textContent = `比對完成：${changedPages} 頁有差異`;
+}
+
+function applyNewExcel() {
+  if (!S._pendingRows || !S._pendingPages) { setStatus('無待套用的新版資料'); return; }
+  S._rawRows = S._pendingRows;
+  S.pages    = S._pendingPages;
+  S.cur      = Math.min(S.cur, Math.max(0, S.pages.length - 1));
+  // Update the Excel filename display in the sidebar
+  if (S._pendingName) {
+    fileOk('bExcel', 'nExcel', S._pendingName);
+  }
+  S._pendingRows = null; S._pendingPages = null; S._pendingName = null;
+  savePagesToStorage();
+  refreshAll();
+  closeDiffPanel();
+  setStatus(`✅ 已更新為新版 Excel（${S.pages.length} 頁）`);
+}
+
+function diffPageBlock(pageNum, label, diffs) {
+  const rows = diffs.map(d => {
+    if (d.type === '=') return '';
+    const bg  = d.type==='+' ? 'rgba(74,222,128,0.10)' : 'rgba(248,113,113,0.10)';
+    const col = d.type==='+' ? '#4ade80' : '#f87171';
+    const sym = d.type==='+' ? '＋' : '－';
+    const txt = esc(d.text.length > 180 ? d.text.slice(0,180)+'…' : d.text);
+    return `<tr style="background:${bg}">
+      <td style="color:${col};font-weight:700;padding:5px 10px;font-size:14px;width:24px">${sym}</td>
+      <td style="color:#dde;padding:5px 10px;font-size:12px;line-height:1.6;word-break:break-all">${txt}</td>
+    </tr>`;
+  }).join('');
+  const unchanged = diffs.filter(d=>d.type==='=').length;
+  const changed   = diffs.filter(d=>d.type!=='=').length;
+  return `<div style="margin-bottom:14px;border:1px solid #334;border-radius:7px;overflow:hidden">
+    <div style="background:#1e2d3d;padding:9px 14px;display:flex;justify-content:space-between;align-items:center">
+      <span style="color:#ffd86e;font-size:13px;font-weight:700">第 ${pageNum} 頁
+        <span style="color:#8899aa;font-weight:400;margin-left:6px">${esc(label)}</span></span>
+      <span style="font-size:11px;color:#556">${changed} 行變動・${unchanged} 行相同</span>
+    </div>
+    <table style="width:100%;border-collapse:collapse">${rows}</table>
+  </div>`;
+}
+
+// ─────────────────────────────────────────────────────────
+// CLIPPING AUDIT
+function checkAllPages() {
+  setStatus('偵測中...');
+
+  // Off-screen canvas — same size as main canvas, nothing shown
+  const auditCanvas = document.createElement('canvas');
+  auditCanvas.width = L.W; auditCanvas.height = L.H;
+  const ac = auditCanvas.getContext('2d');
+
+  S.clippedPages = new Set();
+
+  for (let i = 0; i < S.pages.length; i++) {
+    S.clippingDetected = false;
+    renderPage(ac, S.pages[i]);         // full layout, flags clipping if any
+    if (S.clippingDetected) S.clippedPages.add(i);
+  }
+
+  // Restore current page on main canvas
+  S.clippingDetected = false;
+  renderPage(ctx, S.pages[S.cur]);
+
+  const n = S.clippedPages.size;
+  refreshPageList();
+
+  if (n === 0) {
+    setStatus(`✅ 全部 ${S.pages.length} 頁無掉字`);
+  } else {
+    setStatus(`⚠️ 發現 ${n} 頁有掉字，請查看頁面列表`);
+    // Auto-open pages panel
+    const sec = document.getElementById('secPages');
+    if (sec.classList.contains('closed')) sec.classList.remove('closed');
+  }
+}
+
+function refreshPageInfo() {
+  const pg = S.pages[S.cur], tot = S.pages.length;
+  const firstSec = pg?.sections?.[0];
+  const titleStr = firstSec?.title || pg?.group || '—';
+  document.getElementById('pgTitle').textContent = titleStr;
+  document.getElementById('pgSub').textContent = tot ? `第 ${S.cur+1} 頁 ／ 共 ${tot} 頁` : '尚未匯入文件';
+  document.getElementById('btnPrev').disabled = S.cur <= 0;
+  document.getElementById('btnNext').disabled = S.cur >= tot - 1;
+}
+
+function refreshPageList() {
+  const el = document.getElementById('pageList');
+  if (!S.pages.length) { el.innerHTML = '<p style="font-size:11px;color:var(--text-muted);padding:4px">匯入 Excel 後顯示</p>'; return; }
+  el.innerHTML = S.pages.map((pg, i) => {
+    const firstSec = pg.sections?.[0];
+    const title  = firstSec?.title || pg.group || '（無標題）';
+    const tokens = pg.sections?.map(s => s.heroToken).filter(Boolean).map(t => `[${t}]`).join(' ') || '';
+    const warn   = S.clippedPages.has(i)
+      ? ' <span style="color:#ef4444;font-size:10px;font-weight:700">有掉字</span>'
+      : '';
+    return `<div class="pg-item ${i===S.cur?'cur':''}" onclick="goPage(${i})">
+      <span class="pg-num">${i+1}</span>
+      <span class="pg-ttl">${esc(title)}${warn}</span>
+      <span class="pg-tok">${esc(tokens)}</span>
+    </div>`;
+  }).join('');
+}
+
+function refreshTokenList() {
+  const el = document.getElementById('tokenList');
+  if (!S.usedTokens.size) { el.innerHTML = '<p style="font-size:11px;color:var(--text-muted)">匯入 Excel 後顯示</p>'; return; }
+  el.innerHTML = Array.from(S.usedTokens).map(tok => {
+    const fn = getIconFile(tok);
+    return `<div class="tok-item">
+      <div class="tok-dot ${fn?'ok':'no'}"></div>
+      <span class="tok-name">[${esc(tok)}]</span>
+      <span class="tok-file">${fn ? esc(fn) : '尚未對應'}</span>
+    </div>`;
+  }).join('');
+}
+
+function fileOk(btnId, lblId, name) {
+  document.getElementById(btnId).classList.add('ok');
+  document.getElementById(lblId).textContent = name;
+}
+
+function setSetting(key, val, dispId) {
+  S.cfg[key] = (typeof val === 'boolean') ? val : Number(val);
+  if (dispId) document.getElementById(dispId).textContent = val;
+  saveCfgToStorage();
+  draw();
+}
+
+function toggle(id) { document.getElementById(id).classList.toggle('closed'); }
+function setStatus(msg) { document.getElementById('statusBar').textContent = msg; }
+
+// ─────────────────────────────────────────────────────────
+// EXPORT
+// ─────────────────────────────────────────────────────────
+function exportCurrent() {
+  if (!S.pages.length) { setStatus('無頁面可匯出'); return; }
+  const pg = S.pages[S.cur];
+  const title = pg.sections?.[0]?.title || pg.group || 'page';
+  const name = `Help_Eng_${String(S.cur+1).padStart(2,'0')}.png`;
+  canvas.toBlob(blob => {
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: name });
+    a.click(); URL.revokeObjectURL(a.href);
+    setStatus(`已匯出：${name}`);
+  });
+}
+
+async function exportAll() {
+  if (!S.pages.length) { setStatus('無頁面可匯出'); return; }
+  setStatus('建立 ZIP...');
+  const zip = new JSZip();
+  for (let i = 0; i < S.pages.length; i++) {
+    setStatus(`渲染 ${i+1}/${S.pages.length}...`);
+    renderPage(ctx, S.pages[i]);
+    const blob = await new Promise(r => canvas.toBlob(r));
+    const name = `Help_Eng_${String(i+1).padStart(2,'0')}.png`;
+    zip.file(name, blob);
+  }
+  renderPage(ctx, S.pages[S.cur]); refreshPageInfo();
+  const zipBlob = await zip.generateAsync({ type: 'blob' });
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(zipBlob), download: 'Help_All.zip' });
+  a.click(); URL.revokeObjectURL(a.href);
+  setStatus(`全部 ${S.pages.length} 頁已打包匯出`);
+}
+
+function exportJSON() {
+  if (!S.pages.length) { setStatus('無頁面可儲存'); return; }
+  const data = { version: '1.6.0', cfg: S.cfg, pages: S.pages, savedAt: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `Help_Work_${Date.now()}.json` });
+  a.click(); URL.revokeObjectURL(a.href);
+  setStatus(`工作紀錄已儲存（${S.pages.length} 頁）`);
+}
+
+function importJSON(inp) {
+  const file = inp.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.pages || !Array.isArray(data.pages)) throw new Error('格式錯誤');
+      S.pages = data.pages;
+      S.cur = 0;
+      if (data.cfg) {
+        Object.assign(S.cfg, data.cfg);
+        applySliders();
+      }
+      S.usedTokens = new Set();
+      for (const pg of S.pages) collectPageTokens(pg);
+      fileOk('bExcel', 'nExcel', `${file.name}（JSON）`);
+      savePagesToStorage();
+      refreshAll();
+      setStatus(`已載入工作紀錄：${S.pages.length} 頁`);
+    } catch(err) { setStatus('JSON 格式錯誤：' + err.message); }
+  };
+  reader.readAsText(file);
+  inp.value = '';
+}
+
+function safeName(s) {
+  return (s||'page').replace(/[\/\\:*?"<>|]/g,'_').slice(0,40);
+}
+
+// ─────────────────────────────────────────────────────────
+// LOCALSTORAGE PERSISTENCE
+// ─────────────────────────────────────────────────────────
+const LS_CFG   = 'helpTool_cfg_v1';
+const LS_PAGES = 'helpTool_pages_v1';
+
+function saveCfgToStorage() {
+  try { localStorage.setItem(LS_CFG, JSON.stringify(S.cfg)); } catch(e) {}
+}
+
+function savePagesToStorage() {
+  try { localStorage.setItem(LS_PAGES, JSON.stringify(S.pages)); } catch(e) {}
+}
+
+function loadFromStorage() {
+  // Restore settings (sliders/toggles) only — pages always start blank.
+  // Users must re-import Excel each session; use JSON import to restore work.
+  try {
+    const cfg = localStorage.getItem(LS_CFG);
+    if (cfg) { Object.assign(S.cfg, JSON.parse(cfg)); applySliders(); }
+  } catch(e) {}
+}
+
+// Apply S.cfg values back to all slider/toggle DOM elements
+function applySliders() {
+  const map = {
+    contentOffset: ['vOffset', 60],
+    heroGap:       ['vHeroGap', 40],
+    heroSize:      ['vHeroSize', 180],
+    heroY:         ['vHeroY', 0],
+    ruleFontSize:  ['vFontSize', 23],
+  };
+  for (const [key, [dispId, def]] of Object.entries(map)) {
+    const val = S.cfg[key] ?? def;
+    const disp = document.getElementById(dispId);
+    if (disp) disp.textContent = val;
+    // sync range input
+    const input = disp?.closest('.sl-row')?.querySelector('input[type=range]');
+    if (input) input.value = val;
+  }
+  const togSafe  = document.getElementById('togSafe');
+  const togAreas = document.getElementById('togAreas');
+  if (togSafe)  togSafe.checked  = !!S.cfg.showSafe;
+  if (togAreas) togAreas.checked = !!S.cfg.showAreas;
+}
+
+// ─────────────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────────────
+loadFromStorage();
+refreshPageInfo();
+</script>
+<!-- ═══════════════════ DIFF PANEL ═══════════════════ -->
+<div id="diffOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:1000;overflow:auto">
+  <div style="max-width:1100px;margin:40px auto;background:#1a2230;border:1px solid #334;border-radius:10px;padding:0;box-shadow:0 20px 60px rgba(0,0,0,0.6)">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #334">
+      <div>
+        <h2 style="color:#ffd86e;font-size:16px;margin:0">🔄 企劃文件更新校對</h2>
+        <p id="diffSubtitle" style="color:#8899aa;font-size:11px;margin:4px 0 0">載入新 Excel 以與底稿比較</p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <label class="btn btn-amber" style="margin:0;font-size:11px;padding:7px 12px;cursor:pointer">
+          📊 載入新 Excel 比對
+          <input type="file" accept=".xlsx,.xls" style="display:none" onchange="runDiff(this)">
+        </label>
+        <button onclick="closeDiffPanel()" style="background:rgba(255,255,255,0.08);border:none;color:#aaa;padding:6px 12px;border-radius:5px;cursor:pointer;font-size:13px">✕ 關閉</button>
+      </div>
+    </div>
+    <!-- Summary bar -->
+    <div id="diffSummary" style="display:none;padding:10px 20px;background:rgba(239,68,68,0.1);border-bottom:1px solid #334;font-size:12px;color:#fca5a5"></div>
+    <!-- Content -->
+    <div id="diffContent" style="padding:20px;max-height:72vh;overflow-y:auto">
+      <div style="text-align:center;padding:60px 0;color:#556">
+        <div style="font-size:40px;margin-bottom:12px">📋</div>
+        <p style="margin:0;font-size:14px">載入新版 Excel 檔案，系統自動比對與底稿的差異</p>
+        <p style="margin:6px 0 0;font-size:11px;color:#445">底稿 = 目前已載入的頁面資料</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
