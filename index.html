@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Help 圖自動產生器 v1.6.15</title>
+<title>Help 圖自動產生器 v1.6.29</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/ag-psd@28.2.1/dist/bundle.js"></script>
@@ -185,7 +185,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 4px; curso
 <div class="sidebar">
   <div class="sidebar-header">
     <h1>⚡ Help 圖自動產生器</h1>
-    <p>v1.6.15</p>
+    <p>v1.6.29</p>
   </div>
   <div class="sidebar-scroll">
 
@@ -194,35 +194,56 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 4px; curso
       <div class="sec-hd" onclick="toggle('secFiles')">📁 檔案匯入 <span class="arrow">▾</span></div>
       <div class="sec-bd">
         <div class="file-row">
-          <span>Help 文件（Excel）</span>
-          <label class="file-btn" id="bExcel">
-            <span class="ico">📊</span>
-            <span class="lbl" id="nExcel">選取 .xlsx / .xls</span>
-            <input type="file" accept=".xlsx,.xls,.csv" onchange="handleExcel(this)">
-          </label>
+          <span>Help 文件（Google Sheets）</span>
+          <div style="background:#1e293b;border:1px solid #334155;border-radius:6px;padding:8px 10px;font-size:10px;color:#94a3b8;line-height:1.7;margin-bottom:6px">
+            ℹ️ 試算表須設為「<b style="color:#e2e8f0">知道連結的人可以檢視</b>」<br>
+            （共用 → 一般存取權 → 知道連結的任何人）
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input type="text" id="gsUrl" placeholder="貼上 Google Sheets 網址…"
+              style="flex:1;background:var(--input-bg);border:1px solid var(--border);border-radius:6px;
+                     padding:7px 10px;color:var(--text);font-size:11px;outline:none;min-width:0"
+              onfocus="this.style.borderColor='var(--accent)'"
+              onblur="this.style.borderColor='var(--border)'"
+              onkeydown="if(event.key==='Enter')fetchGoogleSheet()">
+            <button onclick="fetchGoogleSheet()"
+              style="flex-shrink:0;background:var(--accent);color:#0f172a;border:none;border-radius:6px;
+                     padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">
+              📥 匯入
+            </button>
+          </div>
+          <!-- 隱藏元素，保留 id 供其他程式碼（fileOk / JSON 載入）參照 -->
+          <span id="bExcel" style="display:none"></span>
+          <span id="nExcel" style="display:none"></span>
         </div>
         <div class="file-row">
-          <span>Help 底圖（1920×1080）</span>
-          <label class="file-btn" id="bBg">
+          <span>Help 底圖（1920×1080）
+            <button onclick="reloadAsset('bg')" id="reloadBg" title="重新載入上次選擇的檔案" style="float:right;background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:4px;font-size:10px;padding:1px 6px;cursor:pointer;display:none">🔄</button>
+          </span>
+          <label class="file-btn" id="bBg" onclick="pickFile(event, 'bg')">
             <span class="ico">🖼️</span>
             <span class="lbl" id="nBg">選取底圖圖片</span>
-            <input type="file" accept="image/*" onchange="handleBg(this)">
+            <input type="file" accept="image/*" onchange="handleBg(this)" style="display:none">
           </label>
         </div>
         <div class="file-row">
-          <span>Logo</span>
-          <label class="file-btn" id="bLogo">
+          <span>Logo
+            <button onclick="reloadAsset('logo')" id="reloadLogo" title="重新載入上次選擇的檔案" style="float:right;background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:4px;font-size:10px;padding:1px 6px;cursor:pointer;display:none">🔄</button>
+          </span>
+          <label class="file-btn" id="bLogo" onclick="pickFile(event, 'logo')">
             <span class="ico">🏷️</span>
             <span class="lbl" id="nLogo">選取 Logo 圖片</span>
-            <input type="file" accept="image/*" onchange="handleLogo(this)">
+            <input type="file" accept="image/*" onchange="handleLogo(this)" style="display:none">
           </label>
         </div>
         <div class="file-row">
-          <span>小圖示資料夾</span>
-          <label class="file-btn" id="bIcons">
+          <span>小圖示資料夾
+            <button onclick="reloadAsset('icons')" id="reloadIcons" title="重新載入上次選擇的資料夾" style="float:right;background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:4px;font-size:10px;padding:1px 6px;cursor:pointer;display:none">🔄</button>
+          </span>
+          <label class="file-btn" id="bIcons" onclick="pickFile(event, 'icons')">
             <span class="ico">🗂️</span>
             <span class="lbl" id="nIcons">選取圖示資料夾</span>
-            <input type="file" multiple webkitdirectory accept=".png,.jpg,.jpeg,.webp" onchange="handleIcons(this)">
+            <input type="file" multiple webkitdirectory accept=".png,.jpg,.jpeg,.webp" onchange="handleIcons(this)" style="display:none">
           </label>
         </div>
       </div>
@@ -258,7 +279,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 4px; curso
         </div>
         <!-- Compact mode toggle -->
         <button id="btnCompact" class="btn btn-ghost" style="margin-top:6px;font-size:11px;padding:7px 6px;width:100%;border:1px dashed var(--border)" onclick="toggleCompact()">📐 緊湊模式：關</button>
-        <p id="compactHint" style="display:none;font-size:10px;color:#f59e0b;margin-top:4px;line-height:1.5">字體 20pt・行距 1.8・不影響原設定</p>
+        <p id="compactHint" style="display:none;font-size:10px;color:#f59e0b;margin-top:4px;line-height:1.5">字體 18pt・行距 1.6・不影響原設定</p>
         <p style="font-size:10px;color:var(--text-muted);margin-top:6px;line-height:1.5">
           ⚠️ JSON 儲存文字與設定，圖片需重新選取。
         </p>
@@ -270,6 +291,17 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 4px; curso
       <div class="sec-hd" onclick="toggle('secAssets')">🔍 素材對應 <span class="arrow">▾</span></div>
       <div class="sec-bd">
         <div id="tokenList"><p style="font-size:11px;color:var(--text-muted)">匯入 Excel 後顯示</p></div>
+      </div>
+    </div>
+
+    <!-- HERO SIZE PER-TOKEN OVERRIDE -->
+    <div class="sec closed" id="secHeroSizes">
+      <div class="sec-hd" onclick="toggle('secHeroSizes')">🖼️ 標題圖個別調整 <span class="arrow">▾</span></div>
+      <div class="sec-bd">
+        <p style="font-size:10px;color:var(--text-muted);line-height:1.5;margin-bottom:8px">
+          每個標題圖都可以單獨調整顯示大小（不影響規則內 icon）
+        </p>
+        <div id="heroSizeList"><p style="font-size:11px;color:var(--text-muted)">匯入 Excel 後顯示</p></div>
       </div>
     </div>
 
@@ -309,6 +341,30 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 4px; curso
           <label>含括號 token 圖示縮放 <b id="vParenIcon">100</b> %</label>
           <input type="range" min="50" max="150" value="100" oninput="setSetting('parenIconScale',this.value,'vParenIcon')">
         </div>
+
+        <!-- 表格色 (v1.6.29) -->
+        <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+          <label style="display:block;font-size:11px;color:var(--text);margin-bottom:6px;font-weight:600">表格／格線顏色</label>
+          <div id="tableColorRow" style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+            <button data-tc="red"    onclick="setTableColor('red')"    title="紅" style="width:28px;height:28px;border-radius:6px;border:2px solid transparent;background:#CD0C0C;cursor:pointer;padding:0"></button>
+            <button data-tc="green"  onclick="setTableColor('green')"  title="綠" style="width:28px;height:28px;border-radius:6px;border:2px solid transparent;background:#0C9C0C;cursor:pointer;padding:0"></button>
+            <button data-tc="blue"   onclick="setTableColor('blue')"   title="藍" style="width:28px;height:28px;border-radius:6px;border:2px solid transparent;background:#0C5ACD;cursor:pointer;padding:0"></button>
+            <button data-tc="yellow" onclick="setTableColor('yellow')" title="黃" style="width:28px;height:28px;border-radius:6px;border:2px solid transparent;background:#CDB80C;cursor:pointer;padding:0"></button>
+            <button data-tc="purple" onclick="setTableColor('purple')" title="紫" style="width:28px;height:28px;border-radius:6px;border:2px solid transparent;background:#8C0CCD;cursor:pointer;padding:0"></button>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span style="font-size:10px;color:var(--text-muted);min-width:38px">自訂</span>
+            <input type="color" id="tableColorCustom" value="#CD0C0C"
+                   onchange="setTableColor('custom', this.value)"
+                   style="width:36px;height:28px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:transparent;padding:2px">
+            <input type="text" id="tableColorHex" value="#CD0C0C" maxlength="7"
+                   onchange="setTableColor('custom', this.value)"
+                   onkeydown="if(event.key==='Enter')setTableColor('custom', this.value)"
+                   style="flex:1;background:var(--input-bg);border:1px solid var(--border);border-radius:6px;
+                          padding:5px 8px;color:var(--text);font-size:11px;outline:none;font-family:monospace;min-width:0">
+          </div>
+        </div>
+
         <hr style="border:none;border-top:1px solid var(--border);margin:8px 0">
         <div class="toggle-row">
           <span>顯示安全框（預覽用）</span>
@@ -369,14 +425,20 @@ const S = {
     heroY: 0,
     ruleFontSize: 23,
     parenIconScale: 100,           // % size multiplier for [(...)] icons (50–150)
+    tableColor: 'red',             // 表格主題色：'red' | 'green' | 'blue' | 'yellow' | 'purple' | 'custom'
+    tableColorCustom: '#CD0C0C',   // 自訂色（hex），當 tableColor='custom' 時生效
     showSafe: false,
     showAreas: false,
+    heroSizeOverrides: {},         // { TOKEN: pxValue } 個別標題圖大小覆蓋
   },
   usedTokens: new Set(),
+  // ── SETTING INFORMATION 頁面用 (v1.6.29) ──
+  // 該頁面動態切換顯示 BET/LINE/NONE TRIGGER 對應圖片
+  settingTriggerMode: 'BET',     // 'BET' | 'LINE' | 'NONE'
 };
 
 // ─────────────────────────────────────────────────────────
-// BUNDLED BUTTON IMAGES (v1.6.15)
+// BUNDLED BUTTON IMAGES (v1.6.29)
 // Bottom-row buttons are embedded as base64 PNGs and loaded
 // into S.assets.btn{RTG,L,R} at startup. drawBottomButtons
 // renders these images instead of the legacy Canvas drawings.
@@ -431,6 +493,48 @@ const norm = s => s.toLowerCase().replace(/[\s\-_.]/g, '');
 const esc  = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const toStr = v => (v === null || v === undefined) ? '' : String(v).trim();
 
+// ─────────────────────────────────────────────────────────
+// TABLE COLOR THEMES (v1.6.29)
+// 提供 5 種預設色 + 自訂 hex。
+// 回傳 { BORDER, HDR_BG, BASE_BG }，所有表格繪製函式共用。
+// ─────────────────────────────────────────────────────────
+const TABLE_COLOR_PRESETS = {
+  red:    { border: '#CD0C0C', hdrRgb: '58, 0, 0',    altRgb: '31, 0, 0'    },
+  green:  { border: '#0C9C0C', hdrRgb: '0, 42, 0',    altRgb: '0, 22, 0'    },
+  blue:   { border: '#0C5ACD', hdrRgb: '0, 22, 58',   altRgb: '0, 12, 31'   },
+  yellow: { border: '#CDB80C', hdrRgb: '58, 50, 0',   altRgb: '31, 26, 0'   },
+  purple: { border: '#8C0CCD', hdrRgb: '40, 0, 58',   altRgb: '22, 0, 31'   },
+};
+
+function _hexToRgb(hex) {
+  const m = String(hex || '').replace('#', '').match(/^([0-9a-fA-F]{6})$/);
+  if (!m) return null;
+  const v = parseInt(m[1], 16);
+  return { r: (v >> 16) & 255, g: (v >> 8) & 255, b: v & 255 };
+}
+
+function getTableColors() {
+  const key = S.cfg.tableColor || 'red';
+  if (key !== 'custom' && TABLE_COLOR_PRESETS[key]) {
+    const p = TABLE_COLOR_PRESETS[key];
+    return {
+      BORDER:  p.border,
+      HDR_BG:  `rgba(${p.hdrRgb}, 0.7)`,
+      BASE_BG: `rgba(${p.altRgb}, 0.7)`,
+    };
+  }
+  // Custom: derive HDR_BG / BASE_BG from the user-picked hex by darkening
+  const hex = S.cfg.tableColorCustom || '#CD0C0C';
+  const rgb = _hexToRgb(hex) || { r: 205, g: 12, b: 12 };
+  // 表頭背景 ≈ 22% 亮度；內容列 ≈ 12% 亮度（再深一點）
+  const dim = (c, k) => Math.round(c * k);
+  return {
+    BORDER:  hex,
+    HDR_BG:  `rgba(${dim(rgb.r,0.22)}, ${dim(rgb.g,0.22)}, ${dim(rgb.b,0.22)}, 0.7)`,
+    BASE_BG: `rgba(${dim(rgb.r,0.12)}, ${dim(rgb.g,0.12)}, ${dim(rgb.b,0.12)}, 0.7)`,
+  };
+}
+
 function parseTitle(raw) {
   // Full-width ［ ］ = U+FF3B U+FF3D, half-width [ ]
   const re = /^(.*?)\s*[\u005B\uFF3B]([^\u005D\uFF3D]+)[\u005D\uFF3D]\s*$/;
@@ -466,11 +570,31 @@ function parseSegments(line) {
   return segs;
 }
 
-function getIcon(token) { return S.assets.icons[norm(token)] || null; }
-function getIconFile(token) { return S.assets.iconNames[norm(token)] || null; }
+function getIcon(token) {
+  // ── 動態 SETTING_TRIGGER token (v1.6.29) ──
+  // 此 token 會根據 S.settingTriggerMode 切換實際載入的圖檔
+  if (token === '__SETTING_TRIGGER__') {
+    const mode = S.settingTriggerMode || 'BET';
+    const fileMap = {
+      BET:  'Bet_Trigger_ENG',
+      LINE: 'Line_Trigger_ENG',
+      NONE: 'None_Trigger_ENG',
+    };
+    return S.assets.icons[norm(fileMap[mode])] || null;
+  }
+  return S.assets.icons[norm(token)] || null;
+}
+function getIconFile(token) {
+  if (token === '__SETTING_TRIGGER__') {
+    const mode = S.settingTriggerMode || 'BET';
+    const fileMap = { BET: 'Bet_Trigger_ENG', LINE: 'Line_Trigger_ENG', NONE: 'None_Trigger_ENG' };
+    return S.assets.iconNames[norm(fileMap[mode])] || null;
+  }
+  return S.assets.iconNames[norm(token)] || null;
+}
 
 // ─────────────────────────────────────────────────────────
-// MIP-MAP STYLE ICON SCALING  (v1.6.15)
+// MIP-MAP STYLE ICON SCALING  (v1.6.29)
 // ─────────────────────────────────────────────────────────
 // When an icon needs to be drawn at significantly smaller than its
 // original size, browser-native bilinear sampling produces visible
@@ -526,6 +650,119 @@ function getBestMipLevel(img, targetH) {
 // Section = { title, heroToken, subHeader[], rules[] }
 // ─────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────
+// GOOGLE SHEETS IMPORT  (CSV export + CORS proxy chain via XHR)
+// ─────────────────────────────────────────────────────────
+// 使用 export?format=csv 端點：只要試算表設為
+// 「知道連結的人可以檢視」即可存取，無需發佈至網路。
+//
+// file:// 環境受 CORS 限制，需透過公開代理伺服器中轉。
+// 設計四層 fallback chain，任一家掛掉自動切換下一家。
+//
+// 使用 XMLHttpRequest 而非 fetch + AbortController：
+//   ─ 部分擴充功能 / service worker 會嘗試 postMessage 序列化
+//     fetch options，AbortSignal 不可序列化會直接 throw
+//   ─ XHR 有原生 timeout 屬性，相容性更好
+// ─────────────────────────────────────────────────────────
+
+// XHR 包裝：回傳 Promise<string>
+function _xhrGet(url, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    let xhr;
+    try { xhr = new XMLHttpRequest(); } catch (e) { return reject(e); }
+    try { xhr.open('GET', url, true); } catch (e) { return reject(e); }
+    xhr.timeout      = timeoutMs;
+    xhr.responseType = 'text';
+    xhr.onload    = () => {
+      if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.responseText);
+      else reject(new Error(`HTTP ${xhr.status}`));
+    };
+    xhr.onerror   = () => reject(new Error('網路錯誤或 CORS 阻擋'));
+    xhr.ontimeout = () => reject(new Error('逾時'));
+    try { xhr.send(); } catch (e) { reject(e); }
+  });
+}
+
+async function fetchGoogleSheet() {
+  const raw = (document.getElementById('gsUrl').value || '').trim();
+  if (!raw) { setStatus('請先貼上 Google Sheets 網址'); return; }
+
+  const match = raw.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  if (!match) { setStatus('無法識別 Google Sheets 網址'); return; }
+
+  const sheetId  = match[1];
+  const gidMatch = raw.match(/[#&?]gid=(\d+)/);
+  const gid      = gidMatch ? gidMatch[1] : '0';
+
+  const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
+
+  // CORS 代理鏈：依序嘗試，任一家成功即停止
+  const proxies = [
+    { name: 'corsproxy.io', build: u => `https://corsproxy.io/?${encodeURIComponent(u)}` },
+    { name: 'allorigins',   build: u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}` },
+    { name: 'codetabs',     build: u => `https://api.codetabs.com/v1/proxy/?quest=${u}` },
+    { name: 'thingproxy',   build: u => `https://thingproxy.freeboard.io/fetch/${u}` }
+  ];
+
+  setStatus('正在載入 Google Sheets…');
+
+  let authBlocked = false;
+  let lastErr     = null;
+
+  for (let i = 0; i < proxies.length; i++) {
+    const proxy = proxies[i];
+    try {
+      setStatus(`正在嘗試 ${proxy.name}（${i + 1}/${proxies.length}）…`);
+
+      const text = await _xhrGet(proxy.build(csvUrl), 15000);
+      const trimmed = (text || '').trim();
+
+      if (!trimmed) {
+        lastErr = `${proxy.name}: 回傳為空`;
+        continue;
+      }
+
+      // 偵測 Google 登入頁（試算表未公開分享）→ 切換代理也無用
+      if (trimmed.startsWith('<') &&
+          (trimmed.includes('<!DOCTYPE') || trimmed.includes('<html') || trimmed.toLowerCase().includes('<head'))) {
+        authBlocked = true;
+        break;
+      }
+
+      // 用 SheetJS 解析 CSV → rows[][]
+      const wb   = XLSX.read(text, { type: 'string', raw: false });
+      const ws   = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+      if (!rows.length) {
+        lastErr = `${proxy.name}: 試算表為空`;
+        continue;
+      }
+
+      S.usedTokens = new Set();
+      S.pages      = buildPages(rows);
+      S._rawRows   = rows;
+      S.cur        = 0;
+      for (const pg of S.pages) collectPageTokens(pg);
+      fileOk('bExcel', 'nExcel', `Google Sheets（${sheetId.slice(0, 14)}…）`);
+      savePagesToStorage();
+      refreshAll();
+      setStatus(`✅ 已從 Google Sheets 載入 ${S.pages.length} 頁（透過 ${proxy.name}）`);
+      return;
+
+    } catch (err) {
+      lastErr = `${proxy.name}: ${err.message || '未知錯誤'}`;
+      console.warn('[GoogleSheet]', lastErr);
+    }
+  }
+
+  if (authBlocked) {
+    setStatus('❌ 試算表未公開分享。請於試算表右上「共用」→ 將「一般存取權」改為「知道連結的任何人」');
+  } else {
+    setStatus(`❌ 所有代理伺服器皆失敗（最後錯誤：${lastErr || '未知'}）。可能是瀏覽器擴充功能阻擋，請暫時停用後重試`);
+  }
+}
+
 function handleExcel(inp) {
   const file = inp.files[0]; if (!file) return;
   setStatus(`解析 ${file.name}...`);
@@ -578,7 +815,59 @@ function buildPages(rows) {
     }
   }
 
-  for (const g of groups) {
+  // ── SETTING INFORMATION 合併邏輯 (v1.6.29) ──
+  // 「押注說明」群組會自動合併後續所有 TRIGGER 群組，產出單頁標題為
+  // "SETTING INFORMATION" 的頁面，包含：
+  //   1. 押注說明的 B=表格 內容 → 替換為 [SETTING INFORMATION示意圖] token
+  //      （需要在圖示資料夾放 SETTING INFORMATION.png）
+  //   2. B=Denom按鈕 / B=按鈕 等 → 直接忽略
+  //   3. BET/LINE/NONE TRIGGER 群組 → 三選一動態切換的圖片區
+  //      渲染時使用 [__SETTING_TRIGGER__示意圖] 這個動態 token，
+  //      實際載入哪張圖由 S.settingTriggerMode 決定：
+  //        BET  → Bet_Trigger_ENG.png
+  //        LINE → Line_Trigger_ENG.png
+  //        NONE → None_Trigger_ENG.png
+  const TRIGGER_GROUP_RE = /^(BET|LINE|NONE)\s*TRIGGER\b/i;
+  const SKIP_B_TYPES = new Set(['Denom按鈕', '按鈕']);
+  const merged = [];
+  for (let i = 0; i < groups.length; i++) {
+    const g = groups[i];
+    if (g.name === '押注說明') {
+      const settingGroup = {
+        name: 'SETTING INFORMATION',
+        rows: [
+          { B: '標題', C: 'SETTING INFORMATION' },
+          // SETTING INFORMATION 表格 → 替換為示意圖（檔名含空格）
+          { B: '規則', C: '[SETTING INFORMATION示意圖]' },
+        ],
+      };
+      // 押注說明的其他內容（除了表格、Denom按鈕、標題）
+      for (const r of g.rows) {
+        if (r.B === '表格' || r.B === '球分表' || r.B === '配分表') continue;
+        if (SKIP_B_TYPES.has(r.B)) continue;
+        if (r.B === '標題') continue;
+        if (!r.C || !String(r.C).trim()) continue;
+        settingGroup.rows.push(r);
+      }
+      // 跳過後續所有 TRIGGER 群組（內容不展開，改用動態 marker token）
+      let hasTrigger = false;
+      let j = i + 1;
+      while (j < groups.length && TRIGGER_GROUP_RE.test(groups[j].name)) {
+        hasTrigger = true;
+        j++;
+      }
+      // 加入動態 trigger 圖片 marker
+      if (hasTrigger) {
+        settingGroup.rows.push({ B: '規則', C: '[__SETTING_TRIGGER__示意圖]' });
+      }
+      merged.push(settingGroup);
+      i = j - 1;
+    } else {
+      merged.push(g);
+    }
+  }
+
+  for (const g of merged) {
     if      (g.name.includes('特殊標誌')) processSpecial(g, pages);
     else if (g.name.includes('轉輪示意')) processReelDiagram(g, pages);
     else                                   processNormal(g, pages);
@@ -704,8 +993,11 @@ function estimateSectionH(sec, cfg) {
     for (const line of lines) {
       if (!line) { h += lh * 0.4; continue; }
       if (isPipeRow(line)) {
-        // Pipe table row: rowH ≈ fontSize*1.15 + 20px padding
-        h += Math.round(fs * 1.15 + 24);
+        // Pipe table row: 與 drawPipeTable / ruleH 一致
+        const inlineIconH = S.compactMode ? 40 : 44;
+        const cellIconH   = Math.min(inlineIconH, Math.round(fs * 2.0));
+        const cellLineH   = Math.max(fs * 1.15 + 4, cellIconH + 8);
+        h += Math.round(cellLineH + 20);
         continue;
       }
       if (isFullSizeLine(line)) {
@@ -801,33 +1093,36 @@ function packIntoPages(sections, header, footer, groupName, pages) {
     const secHSingle = estimateSectionH(sec, cfg);
     const secHMulti  = estimateSectionH({ ...sec, _multiHero: true }, cfg);
 
-    // If this section alone exceeds 75% threshold → it needs splitLongSection
-    if (secHSingle > availH * 0.75) {
+    // ── 優先嘗試合頁 (v1.6.29) ──
+    // 之前的邏輯先看 secHSingle > 75%，太大直接 splitLongSection，
+    // 結果像 [C1] 那種大 section 永遠無法跟前一個 section 合頁，
+    // 即使前一個 section（如 [MAJOR]）的頁面有大量空間。
+    // 改為：先用 multi-hero 估算試合頁，合頁裝得下就合頁；
+    //       否則 flush 後判斷要不要 split。
+    if (pageSections.length > 0) {
+      const existingMultiH = pageSections.reduce((sum, s, idx) => {
+        const h = estimateSectionH({ ...s, _multiHero: true }, cfg);
+        return sum + h + (idx > 0 ? 30 : 0);
+      }, 0);
+      if (existingMultiH + 30 + secHMulti <= availH) {
+        // 合頁裝得下，加入當前頁
+        pageSections.push(sec);
+        usedH = existingMultiH + 30 + secHMulti;
+        continue;
+      }
+      // 合頁裝不下，flush 當前頁
       flush();
+    }
+
+    // 此時 pageSections 為空。判斷單一 section 是否需要分頁
+    if (secHSingle > availH * 0.75) {
       const splitPages = splitLongSection(sec, header, footer, groupName, availH, cfg);
       pages.push(...splitPages);
       continue;
     }
 
-    // Check if it fits on current page using multi-hero estimates for all
-    if (pageSections.length > 0) {
-      // Re-estimate existing sections with multi-hero size for the combination check
-      const existingMultiH = pageSections.reduce((sum, s, idx) => {
-        const h = estimateSectionH({ ...s, _multiHero: true }, cfg);
-        return sum + h + (idx > 0 ? 30 : 0);
-      }, 0);
-      if (existingMultiH + 30 + secHMulti > availH) {
-        flush();
-      }
-    }
-
     pageSections.push(sec);
-    usedH = pageSections.reduce((sum, s, idx) => {
-      const h = idx === 0 && pageSections.length === 1
-        ? estimateSectionH(s, cfg)   // single on page: use full estimate
-        : estimateSectionH({ ...s, _multiHero: true }, cfg);
-      return sum + h + (idx > 0 ? 30 : 0);
-    }, 0);
+    usedH = secHSingle;
   }
   flush();
 }
@@ -890,11 +1185,60 @@ function splitLongSection(sec, header, footer, groupName, availH, cfg) {
   const rulesAvailHN = Math.max(80, contentBottom - contOverhead);
 
   // ── Step 4: measure each rule's rendered height (token-width-aware) ──
+  // 必須跟 measureFeatureContentH 用一致的邏輯，否則分頁會把表格高度
+  // 算成普通文字行 → 嚴重低估 → 該分頁卻不分頁 → 渲染時表格被擠掉。
   function ruleH(rule) {
     if (!rule || !rule.trim()) return BASE_LH * 0.4;
-    tmp.font = `bold ${fs}px Arial`;
-    const expanded = tokenExpandForMeasure(rule, fs);  // no tmp → conservative packing
-    return wrapText(tmp, expanded, `bold ${fs}px Arial`, RULE_MAX_W).length * BASE_LH;
+
+    // 多行儲存格（Excel Alt+Enter）展開後逐行計算
+    const ruleStr = String(rule);
+    const lines = ruleStr.includes('\n')
+      ? ruleStr.split(/\r?\n/).map(s => s.trim()).filter(Boolean)
+      : [ruleStr];
+
+    let total = 0;
+    let hasPipeBlock = false;
+
+    for (const line of lines) {
+      if (!line) { total += BASE_LH * 0.4; continue; }
+
+      // 管線表格行（與 drawPipeTable Step 2 一致：lineH + PAD_V*2 + 容納 icon）
+      if (isPipeRow(line)) {
+        const inlineIconH = S.compactMode ? 40 : 44;
+        const cellIconH   = Math.min(inlineIconH, Math.round(fs * 2.0));
+        const cellLineH   = Math.max(fs * 1.15 + 4, cellIconH + 8);
+        total += Math.round(cellLineH + 20);
+        hasPipeBlock = true;
+        continue;
+      }
+
+      // 全寬示意圖（佔大量縱向空間）
+      if (typeof isFullSizeLine === 'function' && isFullSizeLine(line)) {
+        const tok = parseSegments(line).find(s => s.t === 'tok')?.v;
+        const img = tok ? getIcon(tok) : null;
+        total += img
+          ? (img.width > L.W - 40
+              ? Math.round(img.height * (L.W - 40) / img.width)
+              : img.height) + 20
+          : 320;
+        continue;
+      }
+
+      // 分數表 N-M
+      if (typeof isScoreLine === 'function' && isScoreLine(line)) {
+        total += Math.round(fs * 1.45 * 1.8) + 10;
+        continue;
+      }
+
+      // 一般文字 + token
+      tmp.font = `bold ${fs}px Arial`;
+      const expanded = tokenExpandForMeasure(line, fs);
+      total += wrapText(tmp, expanded, `bold ${fs}px Arial`, RULE_MAX_W).length * BASE_LH;
+    }
+
+    // 表格區塊後方有額外 12px gap（drawPipeTable 收尾）
+    if (hasPipeBlock) total += 12;
+    return total;
   }
 
   // ── Step 5: greedy packing ───────────────────────────────────────
@@ -1019,8 +1363,15 @@ function processNormal(g, pages) {
       sections.push(curSec);
       seenTitle = true;
     } else if (B === '規則' || TABLE_TYPES.has(B)) {
-      if (curSec) curSec.rules.push(C);
-      else if (C) pageHeader.push(C);
+      // ── 無標題 group 修正 (v1.6.29) ──
+      // 若 group 完全沒有 B=標題 列（例如 BET TRIGGER 等），
+      // 之前會把規則塞進 pageHeader，導致這些 group 沒有頁面產出。
+      // 現在自動建立一個無標題 section 收容規則，確保每個 group 都會產生頁面。
+      if (!curSec) {
+        curSec = { title: '', heroToken: '', subHeader: [], rules: [] };
+        sections.push(curSec);
+      }
+      curSec.rules.push(C);
     } else if (B === '頁尾') {
       pageFooter.push(C);
     } else {
@@ -1064,13 +1415,192 @@ function processSpecial(g, pages) {
 // ─────────────────────────────────────────────────────────
 // ASSET LOADING
 // ─────────────────────────────────────────────────────────
-function handleBg(inp) {
-  const f = inp.files[0]; if (!f) return;
-  loadImg(f, img => { S.assets.bg = img; fileOk('bBg','nBg', f.name); draw(); setStatus('底圖已載入'); });
+// ─────────────────────────────────────────────────────────
+// FILE HANDLE PERSISTENCE  (v1.6.29)
+// 用 IndexedDB 儲存使用者上次選的檔案/資料夾 handle，
+// 之後可以一鍵重新載入。瀏覽器會跳出權限對話框讓使用者授權，
+// 但相比每次點選 + 操作檔案總管要少很多步。
+//
+// 限制：
+// - 需 Chromium 內核（Chrome / Edge）支援 File System Access API
+// - 第一次選檔還是要走 <input type="file">
+// - 從 file:// 雙擊開啟也可使用（Chrome 122+ 已開放此 API）
+// ─────────────────────────────────────────────────────────
+const HANDLE_DB_NAME = 'help_gen_handles';
+const HANDLE_STORE   = 'handles';
+
+function _openHandleDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(HANDLE_DB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(HANDLE_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = () => reject(req.error);
+  });
 }
-function handleLogo(inp) {
-  const f = inp.files[0]; if (!f) return;
-  loadImg(f, img => { S.assets.logo = img; fileOk('bLogo','nLogo', f.name); draw(); setStatus('Logo 已載入'); });
+async function _saveHandle(key, handle) {
+  if (!handle) return;
+  try {
+    const db = await _openHandleDB();
+    const tx = db.transaction(HANDLE_STORE, 'readwrite');
+    tx.objectStore(HANDLE_STORE).put(handle, key);
+    await new Promise(r => tx.oncomplete = r);
+  } catch (e) { console.warn('saveHandle', e); }
+}
+async function _loadHandle(key) {
+  try {
+    const db = await _openHandleDB();
+    const tx = db.transaction(HANDLE_STORE, 'readonly');
+    return await new Promise(res => {
+      const r = tx.objectStore(HANDLE_STORE).get(key);
+      r.onsuccess = () => res(r.result || null);
+      r.onerror   = () => res(null);
+    });
+  } catch (e) { return null; }
+}
+
+// 顯示 / 隱藏 reload 按鈕
+async function _refreshReloadButtons() {
+  for (const key of ['bg', 'logo', 'icons']) {
+    const btnId = 'reload' + key.charAt(0).toUpperCase() + key.slice(1);
+    const btn = document.getElementById(btnId);
+    if (!btn) continue;
+    const h = await _loadHandle(key);
+    btn.style.display = h ? 'inline-block' : 'none';
+  }
+}
+
+async function reloadAsset(key) {
+  const handle = await _loadHandle(key);
+  if (!handle) { setStatus('沒有上次的選擇紀錄'); return; }
+
+  // 重新請求權限（瀏覽器要求每次 session 都需明確授權）
+  try {
+    if (handle.queryPermission) {
+      let perm = await handle.queryPermission({ mode: 'read' });
+      if (perm !== 'granted') perm = await handle.requestPermission({ mode: 'read' });
+      if (perm !== 'granted') { setStatus('權限被拒絕'); return; }
+    }
+  } catch (e) { setStatus('權限請求失敗：' + e.message); return; }
+
+  try {
+    if (key === 'icons') {
+      // 資料夾 handle：列出所有檔案
+      setStatus('重新載入圖示資料夾…');
+      const files = [];
+      for await (const entry of handle.values()) {
+        if (entry.kind === 'file' && /\.(png|jpe?g|webp)$/i.test(entry.name)) {
+          files.push(await entry.getFile());
+        }
+      }
+      if (!files.length) { setStatus('資料夾內無圖片'); return; }
+      S.assets.icons = {}; S.assets.iconNames = {};
+      let done = 0;
+      for (const f of files) {
+        const base = f.name.replace(/\.[^.]+$/, '');
+        const k    = norm(base);
+        loadImg(f, img => {
+          S.assets.icons[k] = img;
+          S.assets.iconNames[k] = f.name;
+          if (++done === files.length) {
+            fileOk('bIcons','nIcons', `${files.length} 個圖示`);
+            refreshTokenList(); draw();
+            setStatus(`✅ 已重新載入 ${files.length} 個圖示`);
+          }
+        });
+      }
+    } else {
+      // 單檔 handle：bg / logo
+      const file = await handle.getFile();
+      loadImg(file, img => {
+        S.assets[key] = img;
+        const ids = key === 'bg' ? ['bBg', 'nBg'] : ['bLogo', 'nLogo'];
+        fileOk(ids[0], ids[1], file.name);
+        draw();
+        setStatus(`✅ ${key === 'bg' ? '底圖' : 'Logo'} 已重新載入`);
+      });
+    }
+  } catch (e) {
+    setStatus('重新載入失敗：' + e.message);
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// pickFile：智慧選檔
+// 優先使用 File System Access API（可儲存 handle 供日後快速重新載入），
+// 不支援的環境（部分舊瀏覽器、某些 file:// 限制）退回 <input type="file">。
+// ─────────────────────────────────────────────────────────
+async function pickFile(event, key) {
+  // 阻止 <label> 的預設行為（觸發 input click）
+  event.preventDefault();
+  event.stopPropagation();
+
+  // 偵測 API 支援
+  const hasShowOpenFilePicker = typeof window.showOpenFilePicker === 'function';
+  const hasShowDirectoryPicker = typeof window.showDirectoryPicker === 'function';
+
+  if (key === 'icons' && !hasShowDirectoryPicker) {
+    // 退回 input 模式
+    event.currentTarget.querySelector('input[type=file]').click();
+    return;
+  }
+  if (key !== 'icons' && !hasShowOpenFilePicker) {
+    event.currentTarget.querySelector('input[type=file]').click();
+    return;
+  }
+
+  try {
+    if (key === 'icons') {
+      const dirHandle = await window.showDirectoryPicker();
+      await _saveHandle('icons', dirHandle);
+      // 載入內容
+      const files = [];
+      for await (const entry of dirHandle.values()) {
+        if (entry.kind === 'file' && /\.(png|jpe?g|webp)$/i.test(entry.name)) {
+          files.push(await entry.getFile());
+        }
+      }
+      if (!files.length) { setStatus('資料夾內無圖片'); return; }
+      S.assets.icons = {}; S.assets.iconNames = {};
+      let done = 0;
+      for (const f of files) {
+        const base = f.name.replace(/\.[^.]+$/, '');
+        const k    = norm(base);
+        loadImg(f, img => {
+          S.assets.icons[k] = img;
+          S.assets.iconNames[k] = f.name;
+          if (++done === files.length) {
+            fileOk('bIcons','nIcons', `${files.length} 個圖示`);
+            refreshTokenList(); draw();
+            setStatus(`已載入 ${files.length} 個圖示`);
+          }
+        });
+      }
+    } else {
+      // bg / logo
+      const [fileHandle] = await window.showOpenFilePicker({
+        types: [{
+          description: 'Image',
+          accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.webp'] }
+        }],
+      });
+      await _saveHandle(key, fileHandle);
+      const file = await fileHandle.getFile();
+      loadImg(file, img => {
+        S.assets[key] = img;
+        const ids = key === 'bg' ? ['bBg', 'nBg'] : ['bLogo', 'nLogo'];
+        fileOk(ids[0], ids[1], file.name);
+        draw();
+        setStatus(`${key === 'bg' ? '底圖' : 'Logo'} 已載入`);
+      });
+    }
+    _refreshReloadButtons();
+  } catch (e) {
+    // 使用者取消選檔（AbortError）：靜默
+    if (e.name !== 'AbortError') {
+      console.error(e);
+      setStatus('選檔失敗：' + e.message);
+    }
+  }
 }
 function handleIcons(inp) {
   const files = Array.from(inp.files).filter(f => /\.(png|jpe?g|webp)$/i.test(f.name));
@@ -1119,7 +1649,7 @@ function draw() {
 
 // Draw a multi-line gradient title centred within a column
 function drawColumnTitle(c, text, colX, colW, y) {
-  const fontSize = 40;
+  const fontSize = 50;     // 對齊 drawFeatureTitle 的 55；雙欄寬度較窄留 padding
   const cx       = colX + colW / 2;
   const maxW     = colW - 60;
 
@@ -1142,13 +1672,14 @@ function drawColumnTitle(c, text, colX, colW, y) {
 }
 
 // Draw 示意圖 scaled to fit within the column, centred horizontally
-function drawColumnFullSizeImage(c, token, colX, colW, y) {
+// forceH（選用）：強制使用此高度（雙欄齊高用）
+function drawColumnFullSizeImage(c, token, colX, colW, y, forceH) {
   const img   = getIcon(token);
   const maxW  = colW - 40;
   const maxH  = 380;   // cap height so rules still have room below
 
   if (!img) {
-    const pw = Math.min(maxW, 600), ph = 240;
+    const pw = Math.min(maxW, 600), ph = forceH || 240;
     const x  = colX + (colW - pw) / 2;
     c.save();
     c.fillStyle = 'rgba(255,175,61,.10)';
@@ -1162,9 +1693,20 @@ function drawColumnFullSizeImage(c, token, colX, colW, y) {
   }
 
   let iw = img.width, ih = img.height;
-  // Scale to fit within maxW × maxH
-  if (iw > maxW) { ih = Math.round(ih * maxW / iw); iw = maxW; }
-  if (ih > maxH) { iw = Math.round(iw * maxH / ih); ih = maxH; }
+  if (forceH) {
+    // 強制高度：等比例縮放對應寬度，且不可超過 maxW
+    ih = forceH;
+    iw = Math.round(img.width * (forceH / img.height));
+    if (iw > maxW) {
+      const ratio = maxW / iw;
+      iw = maxW;
+      ih = Math.round(forceH * ratio);
+    }
+  } else {
+    // Scale to fit within maxW × maxH
+    if (iw > maxW) { ih = Math.round(ih * maxW / iw); iw = maxW; }
+    if (ih > maxH) { iw = Math.round(iw * maxH / ih); ih = maxH; }
+  }
   const x = colX + (colW - iw) / 2;
   const src = getBestMipLevel(img, ih);
   c.imageSmoothingEnabled = true;
@@ -1173,8 +1715,20 @@ function drawColumnFullSizeImage(c, token, colX, colW, y) {
   return y + ih;
 }
 
+// 計算示意圖在指定欄寬下的自然高度
+function measureColumnFullSizeImageH(token, colW) {
+  const img  = getIcon(token);
+  const maxW = colW - 40;
+  const maxH = 380;
+  if (!img) return 240;
+  let iw = img.width, ih = img.height;
+  if (iw > maxW) { ih = Math.round(ih * maxW / iw); iw = maxW; }
+  if (ih > maxH) { iw = Math.round(iw * maxH / ih); ih = maxH; }
+  return ih;
+}
+
 // Draw one reel-diagram column section
-function drawReelColumn(c, sec, colX, colW, startY, contentBottom, cfg) {
+function drawReelColumn(c, sec, colX, colW, startY, contentBottom, cfg, forceImageH, rulesStartY, imageBottomY) {
   const fontSize = Number(cfg.ruleFontSize);
   const LINE_H   = fontSize * 1.8;
   const cx       = colX + colW / 2;
@@ -1189,7 +1743,48 @@ function drawReelColumn(c, sec, colX, colW, startY, contentBottom, cfg) {
     (l && String(l).includes('\n')) ? String(l).split(/\r?\n/).map(s => s.trim()) : [l]
   );
 
+  // 第一輪：先畫示意圖
+  let imageRendered = false;
+  let firstNonImageIdx = 0;
   for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (isFullSizeLine(line)) {
+      const tok = parseSegments(line).find(s => s.t === 'tok').v;
+      if (imageBottomY) {
+        // 底部對齊模式：圖片底部停在 imageBottomY
+        const imgH = forceImageH || measureColumnFullSizeImageH(tok, colW);
+        const imgTop = imageBottomY - imgH;
+        // 圖片 Y 不能小於當前 y（否則會跟標題重疊），保險起見
+        const drawY = Math.max(y, imgTop);
+        drawColumnFullSizeImage(c, tok, colX, colW, drawY, forceImageH);
+      } else if (forceImageH) {
+        drawColumnFullSizeImage(c, tok, colX, colW, y, forceImageH);
+      } else {
+        // 自然繪製（單欄或無齊高需求）
+        firstNonImageIdx = i;
+        break;
+      }
+      imageRendered = true;
+      firstNonImageIdx = i + 1;
+      break;
+    } else if (line) {
+      break;
+    } else {
+      firstNonImageIdx = i + 1;
+    }
+  }
+
+  // 內文起始 y
+  if (imageRendered && rulesStartY) {
+    y = rulesStartY;
+  } else if (imageRendered && imageBottomY) {
+    y = imageBottomY + 20;
+  } else if (imageRendered && forceImageH) {
+    y += forceImageH + 20;
+  }
+
+  // 第二輪：剩餘內容
+  for (let i = imageRendered ? firstNonImageIdx : 0; i < lines.length; i++) {
     if (y + fontSize > contentBottom) break;
     const line = lines[i];
     if (isFullSizeLine(line)) {
@@ -1217,27 +1812,59 @@ function drawReelColumn(c, sec, colX, colW, startY, contentBottom, cfg) {
 function renderReelPage(c, pg, contentBottom, cfg) {
   const secs    = pg.sections || [];
   const hasFtr  = pg.footer?.length > 0;
-  const COL_PAD = 30;
-  const available = contentBottom - 28;
 
-  // ── Vertical centering ────────────────────────────────────────────
-  // Estimate content height of the tallest column (single or either of two)
-  const estH = Math.max(...secs.map(sec =>
-    measureFeatureContentH([sec], cfg, Number(cfg.ruleFontSize) * 1.8, 800)
-  ));
-  let startY = 28;
-  if (estH < available * 0.85) {
-    startY = Math.round(28 + (available - estH) * 0.40);
-  }
+  // ── 標題對齊頁首區中央 (v1.6.29) ──
+  // 與 Feature/Symbol 頁面一致：startY = 57
+  const startY = 57;
 
   if (secs.length >= 2) {
-    const halfW = Math.floor(L.W / 2);
-    drawReelColumn(c, secs[0], COL_PAD,         halfW - COL_PAD * 2, startY, contentBottom, cfg);
-    drawReelColumn(c, secs[1], halfW + COL_PAD, halfW - COL_PAD * 2, startY, contentBottom, cfg);
-    c.save(); c.strokeStyle = 'rgba(255,175,61,.18)'; c.lineWidth = 1;
-    c.beginPath(); c.moveTo(halfW, 40); c.lineTo(halfW, contentBottom - 10); c.stroke();
-    c.restore();
+    // ── 兩欄靠中間 (v1.6.29) ──
+    const COL_W      = 720;
+    const COL_GAP    = 60;
+    const totalW     = COL_W * 2 + COL_GAP;
+    const leftStartX = Math.round((L.W - totalW) / 2);
+    const rightStartX = leftStartX + COL_W + COL_GAP;
+
+    // ── 兩欄齊高 (v1.6.29)：底部對齊 ──
+    // 不再強制兩張圖等高（會放大或縮小其中一張）。
+    // 改為：兩張圖各自保持自然尺寸，但下緣（底部）對齊同一 Y 線。
+    // 內文起始 y = 圖底 + 20，所以兩欄內文也自然齊高。
+    const findFullSizeToken = sec => {
+      for (const l of (sec.rules || [])) {
+        if (l && isFullSizeLine(l)) {
+          return parseSegments(l).find(s => s.t === 'tok')?.v;
+        }
+      }
+      return null;
+    };
+    const tokL = findFullSizeToken(secs[0]);
+    const tokR = findFullSizeToken(secs[1]);
+
+    let imageBottomY = null;   // 統一的圖片底部 Y
+    let rulesStartY  = null;
+    if (tokL && tokR) {
+      const hL = measureColumnFullSizeImageH(tokL, COL_W);
+      const hR = measureColumnFullSizeImageH(tokR, COL_W);
+
+      const titleH = (text) => {
+        if (!text) return 0;
+        const tmp = document.createElement('canvas').getContext('2d');
+        const wrapped = balancedWrapText(tmp, text, 'bold 50px Arial', COL_W - 60);
+        return wrapped.length * 60 + 8;   // (50 + 10) per line + final 8 padding
+      };
+      const titleHL = titleH(secs[0].title);
+      const titleHR = titleH(secs[1].title);
+
+      // 圖片底部 = max(各欄 標題高 + 圖片自然高)
+      // 也就是讓「比較高的那一欄」自然定位，「比較矮的那一欄」往下推到底部對齊
+      imageBottomY = startY + Math.max(titleHL + hL, titleHR + hR);
+      rulesStartY  = imageBottomY + 20;
+    }
+
+    drawReelColumn(c, secs[0], leftStartX,  COL_W, startY, contentBottom, cfg, null, rulesStartY, imageBottomY);
+    drawReelColumn(c, secs[1], rightStartX, COL_W, startY, contentBottom, cfg, null, rulesStartY, imageBottomY);
   } else if (secs.length === 1) {
+    const COL_PAD = 30;
     drawReelColumn(c, secs[0], COL_PAD, L.W - COL_PAD * 2, startY, contentBottom, cfg);
   }
 
@@ -1299,13 +1926,21 @@ function measureFeatureContentH(secs, cfg, customLH, customMaxW) {
 
       // ── Pipe table: estimate actual table height ───────
       // drawRulesReturn splits by \n first, then groups pipe rows.
-      // Estimate: nRows × (fontSize * 1.15 + 4 + PAD_V*2) where PAD_V=10
+      // Row height in drawPipeTable is `max(fontSize*1.15+4, iconH+8) + PAD*2`,
+      // so cells containing icons are dominated by icon height — we must
+      // mirror that here, otherwise tables with icons get severely
+      // under-estimated and calcRichLayoutParams over-expands LINE_H.
       const ruleStr = String(rule);
       if (ruleStr.includes('｜') || ruleStr.includes('|')) {
         const pipeRows = ruleStr.split(/\r?\n/).filter(l => l.includes('｜') || l.includes('|'));
         if (pipeRows.length > 0) {
-          const rowH = fs * 1.15 + 4 + 20;  // lineH + PAD_V*2
-          total += pipeRows.length * rowH + 12;  // +12 trailing gap from return value
+          const hasIcon     = pipeRows.some(r => /[\u005B\uFF3B]/.test(r));
+          const inlineIconH = S.compactMode ? 40 : 44;
+          const textLineH   = fs * 1.15 + 4;
+          const iconLineH   = inlineIconH + 8;
+          const lineH       = hasIcon ? Math.max(textLineH, iconLineH) : textLineH;
+          const rowH        = lineH + 20;  // PAD_V * 2
+          total += pipeRows.length * rowH + 12;
           continue;
         }
       }
@@ -1327,7 +1962,11 @@ function measureFeatureContentH(secs, cfg, customLH, customMaxW) {
 // ─────────────────────────────────────────────────────────
 function computePagePipeRowH(secs, startY, contentBottom, cfg, richLineH) {
   const fs       = Number(cfg.ruleFontSize);
-  const naturalH = Math.round(fs * 1.15 + 4 + 20);  // lineH + PAD_V*2 for 1-line cell
+  // naturalH 要容納 icon（與 drawPipeTable Step 2 一致）
+  const inlineIconH = S.compactMode ? 40 : 44;
+  const cellIconH   = Math.min(inlineIconH, Math.round(fs * 2.0));
+  const cellLineH   = Math.max(fs * 1.15 + 4, cellIconH + 8);
+  const naturalH    = Math.round(cellLineH + 20);  // lineH + PAD_V*2
 
   // Collect all pipe tables (count rows per table)
   const tables = [];
@@ -1342,20 +1981,11 @@ function computePagePipeRowH(secs, startY, contentBottom, cfg, richLineH) {
   }
   if (tables.length <= 1) return null;  // single table: no need to unify
 
-  const totalPipeRows  = tables.reduce((s, n) => s + n, 0);
-  const tableGapTotal  = tables.length * 12;          // drawPipeTable return += 12
-  const naturalTableH  = tables.reduce((s, n) => s + n * naturalH + 12, 0);
-
-  // Total page content height (measureFeatureContentH already estimates tables at naturalH)
-  const totalH    = measureFeatureContentH(secs, cfg, richLineH, 1700);
-  const nonTableH = totalH - naturalTableH;
-
-  const availForTables = contentBottom - startY - nonTableH - tableGapTotal;
-  if (availForTables <= 0) return naturalH;
-
-  const targetRowH = availForTables / totalPipeRows;
-  // Clamp between naturalH and 2.2× naturalH (don't make rows absurdly tall)
-  return Math.round(Math.max(naturalH, Math.min(naturalH * 2.2, targetRowH)));
+  // 多表格頁：以「最緊湊的自然高度」為統一基準（= 底下表格的高度）。
+  // 不再嘗試放大行高填滿空白空間 —— 那會造成第一個表格被放大、
+  // 第二個表格因空間不夠維持原樣，視覺上前大後小不一致。
+  // 寧可下方留白，也要保持兩個表格高度一致。
+  return naturalH;
 }
 
 // ─────────────────────────────────────────────────────────
@@ -1428,6 +2058,19 @@ function renderPage(c, pg, opts) {
   const buttonsOnly = opts && opts.buttonsOnly;
   // "skipContent" = anything except plain rendering hides the inline page content
   const skipContent = textOnly ? false : (bgOnly || logoOnly || buttonsOnly);
+
+  // ── TextOnly 模式 SETTING INFORMATION 特殊處理 (v1.6.29) ──
+  // 隱藏動態 trigger 圖片（__SETTING_TRIGGER__），只輸出標題 + SETTING INFORMATION 表格圖
+  let _origPg = null;
+  if (textOnly && pg.group === 'SETTING INFORMATION') {
+    _origPg = pg;
+    // 深複製 sections，過濾掉 trigger 規則行
+    const filteredSections = (pg.sections || []).map(sec => ({
+      ...sec,
+      rules: (sec.rules || []).filter(r => !String(r || '').includes('__SETTING_TRIGGER__')),
+    }));
+    pg = { ...pg, sections: filteredSections };
+  }
   const cfg     = getEffectiveCfg();
   const baseLH  = cfg._compactLH ? cfg._compactLH : 1.8;  // compact: 1.6, normal: 1.8
 
@@ -1513,12 +2156,22 @@ function renderPage(c, pg, opts) {
     } else {
       // ── Normal symbol page ──────────────────────────────
       const hdrBottom = drawHeader(c, pg.header);
-      let y = hdrBottom + 8 + Number(cfg.contentOffset);
+      // ── 標題位置一致性 (v1.6.29) ──
+      // 不再用 contentOffset 推算位置（那會浮動）。
+      // Symbol Page 的 hero 圖頂部固定對齊 Y=32（頁首區頂部），
+      // 確保所有 Symbol Page 的 hero 起始位置完全一致。
+      let y = 32;
 
       if (secs.length === 1) {
         const sec = secs[0];
         if (sec.heroToken) {
-          y = drawHeroSymbol(c, sec.heroToken, y, Number(cfg.heroSize) * 1.1, Number(cfg.heroY));
+          // ── Hero 中心 Y 固定 (v1.6.29) ──
+          // 之前用「頂部從 y=32 開始」，但因 effectiveSize 因 token 而異
+          // （個別調整工具 + 1.1× 倍率），同一 hero 中心 Y 不一致。
+          // 改為傳入 anchorCenterY=131，所有 Symbol Page 的 hero 視覺中心
+          // 永遠對齊同一 Y 線（不論 effectiveSize 大小）。
+          const HERO_CENTER_Y = 131;
+          y = drawHeroSymbol(c, sec.heroToken, 0, Number(cfg.heroSize), Number(cfg.heroY), HERO_CENTER_Y);
           y += Number(cfg.heroGap);
         }
         if (sec.title) y = drawSymbolTitle(c, sec.title, y);
@@ -1528,8 +2181,6 @@ function renderPage(c, pg, opts) {
       } else {
         for (let i = 0; i < secs.length; i++) {
           const sec = secs[i];
-          // Each hero on a merged Symbol page keeps the full heroSize.
-          // The 0.65× compactSize was over-aggressive for typical 2-symbol merges.
           const heroSz = Number(cfg.heroSize);
           if (i > 0) {
             c.save(); c.strokeStyle = 'rgba(200,150,70,0.25)'; c.lineWidth = 1;
@@ -1539,7 +2190,13 @@ function renderPage(c, pg, opts) {
           }
           const prevHero = i > 0 ? secs[i-1].heroToken : null;
           if (sec.heroToken && sec.heroToken !== prevHero) {
-            y = drawHeroSymbol(c, sec.heroToken, y, heroSz, Number(cfg.heroY));
+            // 第一個 hero 用中心對齊（與單 section 模式一致）；後續 hero 自然流動
+            if (i === 0) {
+              const HERO_CENTER_Y = 131;
+              y = drawHeroSymbol(c, sec.heroToken, 0, heroSz, Number(cfg.heroY), HERO_CENTER_Y);
+            } else {
+              y = drawHeroSymbol(c, sec.heroToken, y, heroSz, Number(cfg.heroY));
+            }
             y += Math.min(Number(cfg.heroGap), 20);
           }
           if (sec.title) y = drawSymbolTitle(c, sec.title, y);
@@ -1568,17 +2225,11 @@ function renderPage(c, pg, opts) {
       richMaxW  = params.maxW;
     }
 
-    // ── Vertical centering ────────────────────────────────
-    // Now applies to full-size image pages too (measureFeatureContentH handles them)
-    // Only skip for paytable pages (grid height pre-determined)
-    let startY = 28;
-    if (!hasPaytable) {
-      const contentH  = measureFeatureContentH(secs, cfg, richLineH, richMaxW);
-      if (contentH < available * 0.85) {
-        const slack = available - contentH;
-        startY = Math.round(28 + slack * 0.40);
-      }
-    }
+    // ── 標題位置一致性 (v1.6.29) ───────────────────────────
+    // 頁首區範圍：HDR_Y=32 ~ SAFE_Y=137，中央 ≈ 85
+    // 標題字體 fontSize=55，視覺中心 = y + 27
+    // 因此 startY=57 → 標題視覺中心對齊頁首區中央 (84.5)
+    let startY = 57;
 
     let y = startY;
     if (secs.length === 1) {
@@ -1596,7 +2247,11 @@ function renderPage(c, pg, opts) {
           y = drawHeroSymbol(c, sec.heroToken, y + 10, Number(cfg.heroSize), Number(cfg.heroY));
           y += Number(cfg.heroGap);
         }
-        if (sec.rules?.length) drawRules(c, sec.rules, y + 18, Number(cfg.ruleFontSize), contentBottom, richLineH, richMaxW);
+        // 第一條規則至少對齊到 L.SAFE_Y（safe 框上緣），讓所有頁面的規則起始位置一致
+        if (sec.rules?.length) {
+          const ruleStartY = Math.max(y + 18, L.SAFE_Y + 8);
+          drawRules(c, sec.rules, ruleStartY, Number(cfg.ruleFontSize), contentBottom, richLineH, richMaxW);
+        }
       }
     } else {
       let heroDrawnOnPage = false;
@@ -1625,7 +2280,11 @@ function renderPage(c, pg, opts) {
             y += 6;
             heroDrawnOnPage = true;
           }
-          if (sec.rules?.length) y = drawRulesReturn(c, sec.rules, y + 6, Number(cfg.ruleFontSize), contentBottom, richLineH, richMaxW);
+          if (sec.rules?.length) {
+            // 只有頁面第一個 section 的規則對齊 SAFE_Y，其他 section 自然流動
+            const ruleStartY = (si === 0) ? Math.max(y + 6, L.SAFE_Y + 8) : (y + 6);
+            y = drawRulesReturn(c, sec.rules, ruleStartY, Number(cfg.ruleFontSize), contentBottom, richLineH, richMaxW);
+          }
           y += 12;  // tight section gap for merged pages
         }
       }
@@ -1681,12 +2340,17 @@ function renderPage(c, pg, opts) {
 
 function drawLogo(c) {
   const img = S.assets.logo;
-  const maxH = L.LOGO_MAX_H, ratio = img.width / img.height;
+  // ── LOGO 頂部對齊按鈕區頂部 (v1.6.29) ──
+  // 按鈕區頂部 = BTN_Y - BTN_H/2 = 985
+  // LOGO 從這裡畫到 canvas 底部 1080，最高 95px
+  const LOGO_TOP_Y = L.BTN_Y - L.BTN_H / 2;        // 985
+  const maxH = Math.min(L.LOGO_MAX_H, L.H - LOGO_TOP_Y - 4);  // 留 4px 底邊
+  const ratio = img.width / img.height;
   const h = Math.min(maxH, img.height), w = h * ratio;
   const src = getBestMipLevel(img, h);
   c.imageSmoothingEnabled = true;
   c.imageSmoothingQuality = 'high';
-  c.drawImage(src, L.LOGO_R - w, L.LOGO_T, w, h);
+  c.drawImage(src, L.LOGO_R - w, LOGO_TOP_Y, w, h);
 }
 
 // Content box border (for symbol pages)
@@ -1867,7 +2531,7 @@ function drawRulesReturn(c, rawLines, startY, fontSize, maxY, overrideLH, overri
   let y = startY;
   let i = 0;
   while (i < lines.length) {
-    if (maxY && y + fontSize > maxY - 2) break;
+    if (maxY && y + LINE_H > maxY) break;
     const line = lines[i];
     if (isScoreLine(line)) {
       const block = [line];
@@ -1886,43 +2550,54 @@ function drawRulesReturn(c, rawLines, startY, fontSize, maxY, overrideLH, overri
     if (!segs.some(s => s.t !== 'txt')) {
       const wrapped = wrapText(c, line, `bold ${fontSize}px Arial`, maxW);
       for (const wl of wrapped) {
-        if (maxY && y + fontSize > maxY - 2) break;
+        if (maxY && y + LINE_H > maxY) break;
         c.save(); c.font = `bold ${fontSize}px Arial`; c.fillStyle = '#ffffff';
         c.textAlign = 'center'; c.textBaseline = 'top'; c.fillText(wl, cx, y); c.restore();
         y += LINE_H;
       }
     } else {
-      y = drawMixedWrapped(c, segs, cx, y, fontSize, '#ffffff', maxW, LINE_H);
+      y = drawMixedWrapped(c, segs, cx, y, fontSize, '#ffffff', maxW, LINE_H, maxY);
     }
     i++;
   }
   return y;
 }
 
-function drawHeroSymbol(c, token, y, size, yOff) {
+function drawHeroSymbol(c, token, y, size, yOff, anchorCenterY) {
   const img = getIcon(token);
-  const ty = y + yOff;
+  const overrides = S.cfg.heroSizeOverrides || {};
+  const effectiveSize = overrides[token] || size;
+  // ── 中心對齊模式 (v1.6.29) ──
+  // 若傳入 anchorCenterY，hero 圖的視覺中心會對齊該 Y 位置，
+  // 不論 effectiveSize 大小都能保證所有 hero 中心 Y 一致。
+  // y 仍然是「頂部位置」，但會根據 anchorCenterY 反推。
+  let ty;
+  if (anchorCenterY) {
+    ty = anchorCenterY - effectiveSize / 2 + yOff;
+  } else {
+    ty = y + yOff;
+  }
   if (img) {
-    const w = size * (img.width / img.height);
-    const src = getBestMipLevel(img, size);
+    const w = effectiveSize * (img.width / img.height);
+    const src = getBestMipLevel(img, effectiveSize);
     c.imageSmoothingEnabled = true;
     c.imageSmoothingQuality = 'high';
-    c.drawImage(src, (L.W - w) / 2, ty, w, size);
-    return ty + size;
+    c.drawImage(src, (L.W - w) / 2, ty, w, effectiveSize);
+    return ty + effectiveSize;
   } else {
-    const x = (L.W - size) / 2;
+    const x = (L.W - effectiveSize) / 2;
     c.save();
     c.fillStyle = 'rgba(255,175,61,.12)';
     c.strokeStyle = 'rgba(255,175,61,.4)';
     c.lineWidth = 2;
-    c.fillRect(x, ty, size, size);
-    c.strokeRect(x, ty, size, size);
+    c.fillRect(x, ty, effectiveSize, effectiveSize);
+    c.strokeRect(x, ty, effectiveSize, effectiveSize);
     c.fillStyle = 'rgba(255,175,61,.55)';
     c.font = 'bold 15px Arial';
     c.textAlign = 'center'; c.textBaseline = 'middle';
-    c.fillText(`[${token}]`, L.W/2, ty + size/2);
+    c.fillText(`[${token}]`, L.W/2, ty + effectiveSize/2);
     c.restore();
-    return ty + size;
+    return ty + effectiveSize;
   }
 }
 
@@ -1954,7 +2629,10 @@ function measureCellW(ctx, cell, fontSize) {
       w += ctx.measureText(s.v).width;
     } else if (s.t === 'tok') {
       const img = getIcon(s.v);
-      const iconH = fontSize * 1.3;
+      // 對齊一般 inline icon 尺寸（44/40），但若 cell 字體已縮小到很小，
+      // 則按比例降，避免 icon 比 cell 還高。
+      const inlineH = S.compactMode ? 40 : 44;
+      const iconH = Math.min(inlineH, Math.round(fontSize * 2.0));
       w += (img ? iconH * (img.width / img.height) : iconH) + 16;
     } else if (s.t === 'nbr' || s.t === 'num') {
       const nfs = Math.round(fontSize * 1.25);
@@ -2023,8 +2701,10 @@ function drawAtomLine(c, atoms, lineX, lineY, lineH, fontSize, colIdx) {
       c.fillText(atom.v, ax, sy);
     } else if (atom.t === 'tok') {
       const img = atom.img || getIcon(atom.v);
-      const iconH = Math.round(fontSize * 1.3 * 0.85);
-      const iy = lineY + (lineH - iconH) / 2 - iconH * 0.18;
+      // 與 measureCellW 同邏輯：icon 高度對齊一般 inline 規則
+      const inlineH = S.compactMode ? 40 : 44;
+      const iconH = Math.min(inlineH, Math.round(fontSize * 2.0));
+      const iy = lineY + (lineH - iconH) / 2 - iconH * 0.08;
       const aspect = img ? img.width / img.height : 1;
       if (img) {
         const src = getBestMipLevel(img, iconH);
@@ -2141,7 +2821,10 @@ function drawPipeTable(c, rows, y, maxY, baseFontSize) {
   const TBL_X = Math.round((L.W - colW.reduce((a, v) => a + v, 0)) / 2);
 
   // ── Step 2: wrap each cell and compute row heights ─────────────────
-  let lineH = fontSize * 1.15 + 4; // single line height within a cell
+  // lineH 必須夠高容納 icon（icon 最大 = 44/40，與 inline 對齊）
+  const inlineIconH = S.compactMode ? 40 : 44;
+  const cellIconH   = Math.min(inlineIconH, Math.round(fontSize * 2.0));
+  let lineH = Math.max(fontSize * 1.15 + 4, cellIconH + 8);
   const wrappedCells = cells.map(row =>
     row.map((cell, ci) => wrapCellContent(tmp, cell, colW[ci], fontSize))
   );
@@ -2168,12 +2851,15 @@ function drawPipeTable(c, rows, y, maxY, baseFontSize) {
   // ── Step 2c: expansion pass ───────────────────────────────────────
   // After scale-down, the minimum-height floor often leaves significant empty space
   // below the table. Redistribute that slack proportionally so rows breathe more.
-  // Cap at 1.8× current height; only fire if gain ≥ 6%.
-  if (maxY) {
+  //
+  // 只在「該頁只有單一表格」時做擴張。若頁面有多個表格（_pageUnifiedRowH 有值）
+  // 或表格後方還有其他 rules，貪婪擴張會擠掉後續內容，所以一律跳過。
+  // 倍率上限從 1.8 改為 1.25，避免短表格被過度拉長。
+  if (maxY && !S._pageUnifiedRowH) {
     const expandAvail   = maxY - y;
     const currentTotalH = rowHeights.reduce((a, v) => a + v, 0);
     if (currentTotalH < expandAvail * 0.85) {
-      const expandScale = Math.min((expandAvail * 0.92) / currentTotalH, 1.8);
+      const expandScale = Math.min((expandAvail * 0.92) / currentTotalH, 1.25);
       if (expandScale >= 1.06) {
         rowHeights = rowHeights.map(rh => Math.round(rh * expandScale));
       }
@@ -2198,9 +2884,12 @@ function drawPipeTable(c, rows, y, maxY, baseFontSize) {
   }
 
   // ── Step 3: render all rows ────────────────────────────────────────
-  const BORDER   = 'rgba(180,130,50,0.60)';
-  const HDR_BG   = 'rgba(140,90,0,0.55)';
-  const ALT_BG   = 'rgba(255,255,255,0.04)';
+  // ── 使用主題色 (v1.6.29) ──
+  const _tc = getTableColors();
+  const BORDER   = _tc.BORDER;
+  const HDR_BG   = _tc.HDR_BG;
+  const ALT_BG   = _tc.BASE_BG;
+  const BASE_BG  = _tc.BASE_BG;
 
   c.save();
   let rowY = y;
@@ -2221,8 +2910,8 @@ function drawPipeTable(c, rows, y, maxY, baseFontSize) {
 
     for (let ci = 0; ci < nCols; ci++) {
       const cw = colW[ci];
-      // Background
-      c.fillStyle = isHeader ? HDR_BG : (ri % 2 === 1 ? ALT_BG : 'transparent');
+      // Background — 全部以暗紅 #8C0000 為基底，header / 交替列加深
+      c.fillStyle = isHeader ? HDR_BG : (ri % 2 === 1 ? ALT_BG : BASE_BG);
       c.fillRect(colX, rowY, cw, rh);
       // Border
       c.strokeStyle = BORDER; c.lineWidth = 1;
@@ -2237,16 +2926,9 @@ function drawPipeTable(c, rows, y, maxY, baseFontSize) {
         const atoms  = wrLines[li];
         const lineY  = startLineY + li * lineH;
         const atomsW = atoms.reduce((s, a) => s + a.w, 0);
-        // Content-based alignment:
-        //   header row → always left-align (bold label)
-        //   sentence / comma-list → left-align
-        //   number / short label / token → centre
-        const cellText  = cells[ri][ci] || '';
-        const leftAlign = !isHeader && isCellSentence(cellText);
-        const startX    = leftAlign
-          ? colX + 12
-          : colX + (cw - atomsW) / 2;
-        drawAtomLine(c, atoms, startX, lineY, lineH, fontSize, leftAlign ? 0 : 1);
+        // 所有欄位內容一律水平置中（v1.6.29）
+        const startX = colX + (cw - atomsW) / 2;
+        drawAtomLine(c, atoms, startX, lineY, lineH, fontSize, 1);
       }
       colX += cw;
     }
@@ -2337,7 +3019,7 @@ function drawImplicitTable(c, rows, y, maxY, fontSize) {
 
   c.save();
   for (const row of rows) {
-    if (maxY && y + fontSize > maxY - 2) break;
+    if (maxY && y + LINE_H > maxY) break;
 
     // ── Divider row ───────────────────────────────────────
     if (row.isDivider) {
@@ -2472,17 +3154,21 @@ function drawPaytable(c, entries, startY, contentBottom, label) {
   }
 
   // ── Calculate row heights ──────────────────────────────
+  // rowHeights 包含紅框 padding，避免兩列間紅框重疊或凸出畫面
+  const FRAME_PAD_TOP_RES = 16;
+  const FRAME_PAD_BOT_RES = 12;
   const rowHeights = symbolRows.map(rowEntries => {
     const maxPays = Math.max(...rowEntries.map(e => e.pays.length));
-    return iconH + ICON_GAP + maxPays * PAY_LH;
+    return iconH + ICON_GAP + maxPays * PAY_LH + FRAME_PAD_TOP_RES + FRAME_PAD_BOT_RES;
   });
   const totalRowH    = rowHeights.reduce((a, v) => a + v, 0);
-  const INTER_ROW_GAP = 16;                                    // tight gap between the two rows
+  const INTER_ROW_GAP = 8;   // 紅框上下已留 padding，row 之間不需太大 gap
   const totalContentH = totalRowH + INTER_ROW_GAP * (symbolRows.length - 1);
   const slack         = Math.max(0, availH - totalContentH);
 
   // Weight: 35% above first row, 8% between rows (absorbed into INTER), 57% below
-  let y = startY + Math.round(slack * 0.35);
+  // 起始 y 要把紅框上 padding 補進去
+  let y = startY + Math.round(slack * 0.35) + FRAME_PAD_TOP_RES;
 
   c.save();
 
@@ -2529,6 +3215,24 @@ function drawPaytable(c, entries, startY, contentBottom, label) {
       const cw    = colW[ci];
       const img   = getIcon(entry.token);
 
+      // ── 紅色框 (v1.6.29) ──────────────────────────────────
+      // 同列所有紅框高度統一（用該列最大 pays 數），上下齊平
+      const rowMaxPays = Math.max(...rowEntries.map(e => e.pays.length));
+      const cellH      = iconH + ICON_GAP + rowMaxPays * PAY_LH;
+      const FRAME_PAD_X = 14;
+      const FRAME_PAD_TOP = 16;
+      const FRAME_PAD_BOT = 12;
+      const frameX = colX + FRAME_PAD_X;
+      const frameY = y - FRAME_PAD_TOP;
+      const frameW = cw - FRAME_PAD_X * 2;
+      const frameH = cellH + FRAME_PAD_TOP + FRAME_PAD_BOT;
+      c.save();
+      c.strokeStyle = getTableColors().BORDER;
+      c.lineWidth   = 2;
+      rrect(c, frameX, frameY, frameW, frameH, 6);
+      c.stroke();
+      c.restore();
+
       // ── Icon ──────────────────────────────────────────────
       if (img) {
         const aspect = img.width / img.height;
@@ -2574,7 +3278,10 @@ function drawPaytable(c, entries, startY, contentBottom, label) {
       }
     }
 
-    y += rowH + (ri < symbolRows.length - 1 ? INTER_ROW_GAP : 0);
+    // y 推進：rowH 已含 top + bottom padding，但這個 row 已經畫在 (y - top padding) 開始
+    // 所以下一個 row 的起始 y = (本 row 的 y - top padding) + rowH + top padding (下個 row)
+    // 簡化：y 從 (含 padding) 推進到下個 (含 padding) 起點
+    y += (rowH - FRAME_PAD_TOP_RES - FRAME_PAD_BOT_RES) + FRAME_PAD_BOT_RES + (ri < symbolRows.length - 1 ? INTER_ROW_GAP + FRAME_PAD_TOP_RES : 0);
   }
 
   // ── Trailing label (e.g. "OF A KIND") ──────────────────
@@ -2724,7 +3431,7 @@ function drawRules(c, rawLines, startY, fontSize, maxY, overrideLH, overrideMaxW
   let y = startY;
   let i = 0;
   while (i < lines.length) {
-    if (maxY && y + fontSize > maxY - 2) break;  // tight guard, contentBottom already has buffer
+    if (maxY && y + LINE_H > maxY) break;  // tight guard, contentBottom already has buffer
     const line = lines[i];
     if (isScoreLine(line)) {
       const block = [line]; i++;
@@ -2785,13 +3492,13 @@ function drawRules(c, rawLines, startY, fontSize, maxY, overrideLH, overrideMaxW
     if (!segs.some(s => s.t !== 'txt')) {
       const wrapped = wrapText(c, line, `bold ${fontSize}px Arial`, maxW);
       for (const wl of wrapped) {
-        if (maxY && y + fontSize > maxY - 2) break;
+        if (maxY && y + LINE_H > maxY) break;
         c.save(); c.font = `bold ${fontSize}px Arial`; c.fillStyle = '#ffffff';
         c.textAlign = 'center'; c.textBaseline = 'top'; c.fillText(wl, cx, y); c.restore();
         y += LINE_H;
       }
     } else {
-      y = drawMixedWrapped(c, segs, cx, y, fontSize, '#ffffff', maxW, LINE_H);
+      y = drawMixedWrapped(c, segs, cx, y, fontSize, '#ffffff', maxW, LINE_H, maxY);
     }
     i++;
   }
@@ -2814,7 +3521,7 @@ function drawRulesReturn(c, rawLines, startY, fontSize, maxY, overrideLH, overri
   let y = startY;
   let i = 0;
   while (i < lines.length) {
-    if (maxY && y + fontSize > maxY - 2) break;
+    if (maxY && y + LINE_H > maxY) break;
     const line = lines[i];
     if (isScoreLine(line)) {
       const block = [line]; i++;
@@ -2874,13 +3581,13 @@ function drawRulesReturn(c, rawLines, startY, fontSize, maxY, overrideLH, overri
     if (!segs.some(s => s.t !== 'txt')) {
       const wrapped = wrapText(c, line, `bold ${fontSize}px Arial`, maxW);
       for (const wl of wrapped) {
-        if (maxY && y + fontSize > maxY - 2) break;
+        if (maxY && y + LINE_H > maxY) break;
         c.save(); c.font = `bold ${fontSize}px Arial`; c.fillStyle = '#ffffff';
         c.textAlign = 'center'; c.textBaseline = 'top'; c.fillText(wl, cx, y); c.restore();
         y += LINE_H;
       }
     } else {
-      y = drawMixedWrapped(c, segs, cx, y, fontSize, '#ffffff', maxW, LINE_H);
+      y = drawMixedWrapped(c, segs, cx, y, fontSize, '#ffffff', maxW, LINE_H, maxY);
     }
     i++;
   }
@@ -2901,7 +3608,7 @@ function drawRulesReturn(c, rawLines, startY, fontSize, maxY, overrideLH, overri
 
 // Measure one segment's pixel width (does NOT draw)
 function segW(c, seg, fontSize) {
-  // ── Per-token inline icon height (v1.6.15) ─────────────
+  // ── Per-token inline icon height (v1.6.29) ─────────────
   // Default size:
   //   • Normal mode:  44px
   //   • Compact mode: 40px
@@ -2963,7 +3670,7 @@ function splitTxtWords(text) {
 
 // Core: break segments into visual rows, then draw each row centred.
 // Returns the new y after all rows.
-function drawMixedWrapped(c, segs, cx, y, fontSize, textColor, maxW, fixedLineH) {
+function drawMixedWrapped(c, segs, cx, y, fontSize, textColor, maxW, fixedLineH, maxY) {
   const iconH  = fontSize * 1.3;
   const LINE_H = fixedLineH || (fontSize * 1.8);  // use caller's fixed height or default
 
@@ -3035,7 +3742,7 @@ function drawMixedWrapped(c, segs, cx, y, fontSize, textColor, maxW, fixedLineH)
     }
   }
 
-  // ── v1.6.15: detect vertically-stacked icons ──────────
+  // ── v1.6.29: detect vertically-stacked icons ──────────
   // When a token icon on one row sits horizontally over a token icon on the
   // next row, the larger ones (paren-scaled) can visually overlap because
   // their drawn height exceeds LINE_H.  Pre-compute each row's token X-extents
@@ -3083,7 +3790,11 @@ function drawMixedWrapped(c, segs, cx, y, fontSize, textColor, maxW, fixedLineH)
         // b sits at y_next + (LINE_H - b.drawH)/2 - b.upShift, top
         const bTop = LINE_H + ((LINE_H - b.drawH) / 2 - b.upShift);
         const gap = bTop - aBottom;     // positive = clear, negative = overlap
-        const desiredGap = 6;           // minimum vertical gap
+        // desiredGap：兩個 icon 之間至少要有的垂直距離。
+        // 之前設 6 太嚴格，會讓相鄰兩行只要 X 軸有重疊就被加距，
+        // 即使 icon 高度小於 LINE_H、視覺上根本沒撞到也誤判。
+        // 改為 -2：允許微小視覺重疊（小於 2px），只在真的撞到才加距。
+        const desiredGap = -2;
         if (gap < desiredGap) {
           neededExtra = Math.max(neededExtra, desiredGap - gap);
         }
@@ -3100,6 +3811,7 @@ function drawMixedWrapped(c, segs, cx, y, fontSize, textColor, maxW, fixedLineH)
   // Draw each row centred
   c.save();
   let rowIdx = 0;
+  let clipped = false;
   for (const r of rows) {
     const totalW = r.reduce((s, m) => s + m.w, 0);
     // rowH is ALWAYS LINE_H — never let icon heights expand the row
@@ -3110,6 +3822,14 @@ function drawMixedWrapped(c, segs, cx, y, fontSize, textColor, maxW, fixedLineH)
     const deltaOffset = rowYOffsets[rowIdx] - prevOffset;
     if (deltaOffset > 0) y += deltaOffset;
     const yThis = y;
+
+    // ── maxY guard：超過內容底線就停止繪製並標記掉字 ──
+    // 必須用 LINE_H（實際前進量）而非 fontSize 來判斷，
+    // 否則行的尾巴可能還是會超出 maxY。
+    if (maxY && yThis + LINE_H > maxY) {
+      clipped = true;
+      break;
+    }
 
     for (const seg of r) {
       c.textBaseline = 'top';
@@ -3131,7 +3851,7 @@ function drawMixedWrapped(c, segs, cx, y, fontSize, textColor, maxW, fixedLineH)
         } else {
           // ── Inline icon: use the fixed height computed in segW ──
           const drawH = seg.iconH || (S.compactMode ? 40 : 44);
-          // Vertical alignment (v1.6.15):
+          // Vertical alignment (v1.6.29):
           //   Base icons are shifted up 8% — sits lower than legacy 18% so
           //   the larger 44/40px icons feel grounded with the text baseline.
           //   Larger icons (paren-scaled) keep the SAME absolute upward offset
@@ -3182,6 +3902,7 @@ function drawMixedWrapped(c, segs, cx, y, fontSize, textColor, maxW, fixedLineH)
     y += LINE_H;  // base advance per row (unchanged from v1.6.8)
   }
   c.restore();
+  if (clipped) S.clippingDetected = true;
   return y;
 }
 
@@ -3191,6 +3912,27 @@ function drawInlineSegs(c, segs, cx, y, fontSize, textColor = '#ffffff') {
 }
 
 // Footer: 16pt Bold #ffe699, anchored above buttons, drawn bottom-up
+// ─────────────────────────────────────────────────────────
+// 頁尾專用 segment parser
+// 與 parseSegments 不同：頁尾的 {N} 與獨立數字一律當成普通文字，
+// 不套用大號黃色樣式（法律聲明、版權年份等不應被誤判為強調數字）。
+// 仍然支援 [TOKEN] 圖示替換。
+// ─────────────────────────────────────────────────────────
+function parseFooterSegments(line) {
+  const segs = [];
+  // 只匹配 [TOKEN] / ［TOKEN］，數字與 {N} 全部留在文字中
+  const re = /[\u005B\uFF3B]([^\u005D\uFF3D]+)[\u005D\uFF3D]/g;
+  let li = 0, m;
+  while ((m = re.exec(line)) !== null) {
+    if (m.index > li) segs.push({ t: 'txt', v: line.slice(li, m.index) });
+    segs.push({ t: 'tok', v: m[1].trim() });
+    S.usedTokens.add(m[1].trim());
+    li = re.lastIndex;
+  }
+  if (li < line.length) segs.push({ t: 'txt', v: line.slice(li) });
+  return segs;
+}
+
 function drawFooter(c, lines) {
   const FS        = 16;
   const BAL_MAX_W = 1200;  // balanced-wrap target width
@@ -3202,12 +3944,15 @@ function drawFooter(c, lines) {
   const allWrapped = [];
   for (const line of lines) {
     if (!line) { allWrapped.push(''); continue; }
-    const segs = parseSegments(line);
+    // 用頁尾專用 parser，避免 {N} 與年份被當成強調數字
+    const segs = parseFooterSegments(line);
     if (segs.some(s => s.t !== 'txt')) {
       // Mixed: store the segs for a second-pass draw
       allWrapped.push({ mixed: true, segs, line });
     } else {
-      const wrapped = balancedWrapText(c, line, `bold ${FS}px Arial`, BAL_MAX_W);
+      // 同時把原文中的 { } 移除，讓 {2026} 變成純文字 2026
+      const plain = line.replace(/[\u007B\uFF5B](\d+)[\u007D\uFF5D]/g, '$1');
+      const wrapped = balancedWrapText(c, plain, `bold ${FS}px Arial`, BAL_MAX_W);
       allWrapped.push(...wrapped);
     }
   }
@@ -3334,7 +4079,7 @@ function goPage(i) { S.cur = i; draw(); refreshPageList(); }
 // ─────────────────────────────────────────────────────────
 // UI REFRESH
 // ─────────────────────────────────────────────────────────
-function refreshAll() { refreshPageList(); refreshTokenList(); draw(); }
+function refreshAll() { refreshPageList(); refreshTokenList(); refreshHeroSizeList(); draw(); }
 
 // ─────────────────────────────────────────────────────────
 // COMPACT MODE
@@ -3400,8 +4145,8 @@ function toggleCompact() {
   refreshAll();
   const totalPages = S.pages.length;
   setStatus(S.compactMode
-    ? `緊湊模式：共 ${totalPages} 頁（字體 20pt，行距 1.7）`
-    : `一般模式：共 ${totalPages} 頁（字體 24pt，行距 1.8）`);
+    ? `緊湊模式：共 ${totalPages} 頁（字體 18pt，行距 1.6）`
+    : `一般模式：共 ${totalPages} 頁（字體 ${S.cfg.ruleFontSize}pt，行距 1.8）`);
 }
 
 // Returns cfg with compact overrides applied if compactMode is on
@@ -3409,8 +4154,8 @@ function getEffectiveCfg() {
   if (!S.compactMode) return S.cfg;
   return {
     ...S.cfg,
-    ruleFontSize: 20,         // compact font size
-    _compactLH:   1.8,        // compact line height multiplier (matches normal mode)
+    ruleFontSize: 18,         // compact font size
+    _compactLH:   1.6,        // compact line height multiplier
   };
 }
 // Renders every page to an off-screen canvas, relying on the
@@ -3667,12 +4412,37 @@ function refreshPageList() {
     const warn   = S.clippedPages.has(i)
       ? ' <span style="color:#ef4444;font-size:10px;font-weight:700">有掉字</span>'
       : '';
+    // ── SETTING INFORMATION 頁面：附加 trigger 切換下拉 (v1.6.29) ──
+    // 暫時關閉 (v1.6.29)：下拉選單功能尚有問題，先不顯示。
+    // ZIP 匯出時仍會自動產出 BET/LINE/NONE 三張圖，不受影響。
+    // 若需重新啟用，把下方 isSettingPage 改回正常判定即可。
+    const isSettingPage = false;  // 原本：pg.group === 'SETTING INFORMATION' && i === S.cur
+    const triggerUI = isSettingPage ? `
+      <div style="margin-top:6px;padding:6px 8px;background:rgba(255,255,255,0.05);border-radius:4px"
+        onclick="event.stopPropagation()">
+        <label style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:4px">Trigger 模式</label>
+        <select onchange="setTriggerMode(this.value)"
+          style="width:100%;background:var(--input-bg);border:1px solid var(--border);
+                 border-radius:4px;padding:3px 6px;color:var(--text);font-size:11px;
+                 font-weight:600;outline:none">
+          <option value="BET"  ${S.settingTriggerMode === 'BET'  ? 'selected' : ''}>BET TRIGGER</option>
+          <option value="LINE" ${S.settingTriggerMode === 'LINE' ? 'selected' : ''}>LINE TRIGGER</option>
+          <option value="NONE" ${S.settingTriggerMode === 'NONE' ? 'selected' : ''}>NONE TRIGGER</option>
+        </select>
+      </div>` : '';
     return `<div class="pg-item ${i===S.cur?'cur':''}" onclick="goPage(${i})">
       <span class="pg-num">${i+1}</span>
       <span class="pg-ttl">${esc(title)}${warn}</span>
       <span class="pg-tok">${esc(tokens)}</span>
+      ${triggerUI}
     </div>`;
   }).join('');
+}
+
+function setTriggerMode(mode) {
+  S.settingTriggerMode = mode;
+  draw();
+  refreshPageList();
 }
 
 function refreshTokenList() {
@@ -3688,6 +4458,120 @@ function refreshTokenList() {
   }).join('');
 }
 
+// ─────────────────────────────────────────────────────────
+// HERO SIZE PER-TOKEN ADJUSTMENT
+// 下拉選單式介面：選一個 token，調整其大小
+// 滑桿粗調 + 數值欄位細調，兩者同步
+// ─────────────────────────────────────────────────────────
+function refreshHeroSizeList() {
+  const el = document.getElementById('heroSizeList');
+  if (!el) return;
+
+  // 收集所有作為 heroToken 使用的 token（去重）
+  const heroTokens = new Set();
+  for (const pg of (S.pages || [])) {
+    for (const sec of (pg.sections || [])) {
+      if (sec.heroToken) heroTokens.add(sec.heroToken);
+    }
+  }
+
+  if (!heroTokens.size) {
+    el.innerHTML = '<p style="font-size:11px;color:var(--text-muted)">匯入 Excel 後顯示</p>';
+    return;
+  }
+
+  if (!S.cfg.heroSizeOverrides) S.cfg.heroSizeOverrides = {};
+  const tokenList = Array.from(heroTokens).sort();
+
+  // 維持上次選的 token，或預設第一個
+  if (!S._selectedHeroToken || !heroTokens.has(S._selectedHeroToken)) {
+    S._selectedHeroToken = tokenList[0];
+  }
+  const sel = S._selectedHeroToken;
+  const globalSize = Number(S.cfg.heroSize);
+  const cur = S.cfg.heroSizeOverrides[sel] || globalSize;
+  const isOverride = !!S.cfg.heroSizeOverrides[sel];
+
+  el.innerHTML = `
+    <select id="heroTokenSelect" onchange="onHeroTokenSelected(this.value)"
+      style="width:100%;background:var(--input-bg);border:1px solid var(--border);
+             border-radius:6px;padding:6px 8px;color:var(--text);font-size:11px;
+             font-weight:600;outline:none;margin-bottom:10px">
+      ${tokenList.map(t => `<option value="${esc(t)}" ${t === sel ? 'selected' : ''}>[${esc(t)}]${S.cfg.heroSizeOverrides[t] ? ` ★${S.cfg.heroSizeOverrides[t]}px` : ''}</option>`).join('')}
+    </select>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <label style="font-size:10px;color:var(--text-muted)">大小（px）</label>
+      ${isOverride ? `<button onclick="resetHeroSize('${esc(sel).replace(/'/g, "\\'")}')"
+        style="background:transparent;border:1px solid var(--border);color:var(--text-muted);
+               border-radius:4px;font-size:10px;padding:2px 8px;cursor:pointer">↺ 還原預設</button>` : ''}
+    </div>
+
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+      <input type="range" id="heroSizeSlider" min="40" max="500" step="1" value="${cur}"
+        style="flex:1"
+        oninput="onHeroSliderChange(this.value)">
+      <input type="number" id="heroSizeNumber" min="20" max="800" step="1" value="${cur}"
+        style="width:62px;background:var(--input-bg);border:1px solid var(--border);
+               border-radius:4px;padding:4px 6px;color:var(--text);font-size:11px;
+               font-weight:700;text-align:center;outline:none"
+        onchange="onHeroNumberChange(this.value)"
+        onkeydown="if(event.key==='Enter')this.blur()">
+    </div>
+
+    <p style="font-size:10px;color:var(--text-muted);line-height:1.5;margin:0">
+      預設 = ${globalSize}px（全域 heroSize）${isOverride ? ` · 已覆蓋為 <b style="color:var(--accent)">${cur}px</b>` : ''}
+    </p>
+  `;
+}
+
+function onHeroTokenSelected(tok) {
+  S._selectedHeroToken = tok;
+  refreshHeroSizeList();
+}
+
+function onHeroSliderChange(val) {
+  const numEl = document.getElementById('heroSizeNumber');
+  if (numEl) numEl.value = val;
+  applyHeroSize(Number(val));
+}
+
+function onHeroNumberChange(val) {
+  let n = Number(val);
+  if (!isFinite(n) || n <= 0) return;
+  // 數值欄位允許 20-800 的範圍（比滑桿寬，方便細部調整）
+  n = Math.max(20, Math.min(800, n));
+  const slider = document.getElementById('heroSizeSlider');
+  if (slider) slider.value = Math.max(40, Math.min(500, n));  // 滑桿夾在 40-500
+  const numEl = document.getElementById('heroSizeNumber');
+  if (numEl) numEl.value = n;
+  applyHeroSize(n);
+}
+
+function applyHeroSize(val) {
+  const tok = S._selectedHeroToken;
+  if (!tok) return;
+  if (!S.cfg.heroSizeOverrides) S.cfg.heroSizeOverrides = {};
+  S.cfg.heroSizeOverrides[tok] = Number(val);
+  saveCfgToStorage();
+  draw();
+  // 更新 select option label 顯示星號 + 數值
+  const sel = document.getElementById('heroTokenSelect');
+  if (sel) {
+    for (const opt of sel.options) {
+      if (opt.value === tok) opt.textContent = `[${tok}] ★${val}px`;
+    }
+  }
+}
+
+function resetHeroSize(token) {
+  if (!S.cfg.heroSizeOverrides) return;
+  delete S.cfg.heroSizeOverrides[token];
+  saveCfgToStorage();
+  draw();
+  refreshHeroSizeList();
+}
+
 function fileOk(btnId, lblId, name) {
   document.getElementById(btnId).classList.add('ok');
   document.getElementById(lblId).textContent = name;
@@ -3700,6 +4584,44 @@ function setSetting(key, val, dispId) {
   draw();
 }
 
+// ─────────────────────────────────────────────────────────
+// TABLE COLOR PICKER (v1.6.29)
+// ─────────────────────────────────────────────────────────
+function setTableColor(key, hex) {
+  if (key === 'custom') {
+    let v = String(hex || '').trim();
+    if (!v.startsWith('#')) v = '#' + v;
+    if (!/^#[0-9a-fA-F]{6}$/.test(v)) {
+      setStatus('色碼格式錯誤，請使用 #RRGGBB');
+      return;
+    }
+    S.cfg.tableColor = 'custom';
+    S.cfg.tableColorCustom = v.toUpperCase();
+  } else {
+    S.cfg.tableColor = key;
+  }
+  _refreshTableColorUI();
+  saveCfgToStorage();
+  draw();
+}
+
+function _refreshTableColorUI() {
+  const cur = S.cfg.tableColor || 'red';
+  // Highlight selected preset button
+  const buttons = document.querySelectorAll('#tableColorRow button[data-tc]');
+  buttons.forEach(b => {
+    const sel = b.getAttribute('data-tc') === cur;
+    b.style.borderColor = sel ? '#fff' : 'transparent';
+    b.style.boxShadow   = sel ? '0 0 0 2px rgba(255,255,255,0.3)' : 'none';
+  });
+  // Sync custom inputs
+  const hex = S.cfg.tableColorCustom || '#CD0C0C';
+  const colorInp = document.getElementById('tableColorCustom');
+  const hexInp   = document.getElementById('tableColorHex');
+  if (colorInp) colorInp.value = hex;
+  if (hexInp)   hexInp.value   = hex;
+}
+
 function toggle(id) { document.getElementById(id).classList.toggle('closed'); }
 function setStatus(msg) { document.getElementById('statusBar').textContent = msg; }
 
@@ -3709,17 +4631,16 @@ function setStatus(msg) { document.getElementById('statusBar').textContent = msg
 function exportCurrent() {
   if (!S.pages.length) { setStatus('無頁面可匯出'); return; }
   const textOnly = document.getElementById('chkTextOnly')?.checked;
-  const suffix = textOnly ? '_TextOnly' : '';
-  const name = `Help_Eng_${String(S.cur+1).padStart(2,'0')}${suffix}.png`;
+  // 檔名不論是否 textOnly 都用 Help_Page_NN（v1.6.29）
+  const name = `Help_Page_${String(S.cur+1).padStart(2,'0')}.png`;
 
   if (textOnly) {
-    // Re-render this page with no bg/logo/footer/buttons, then restore main view
     renderPage(ctx, S.pages[S.cur], { textOnly: true });
   }
   canvas.toBlob(blob => {
     const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: name });
     a.click(); URL.revokeObjectURL(a.href);
-    if (textOnly) renderPage(ctx, S.pages[S.cur]);  // restore normal view
+    if (textOnly) renderPage(ctx, S.pages[S.cur]);
     setStatus(`已匯出：${name}`);
   });
 }
@@ -3730,23 +4651,50 @@ async function exportAll() {
   const suffix = textOnly ? '_TextOnly' : '';
   setStatus('建立 ZIP...');
   const zip = new JSZip();
+  const savedTriggerMode = S.settingTriggerMode;  // 先備份當前模式
+
+  let outIdx = 0;
   for (let i = 0; i < S.pages.length; i++) {
-    setStatus(`渲染 ${i+1}/${S.pages.length}...`);
-    renderPage(ctx, S.pages[i], textOnly ? { textOnly: true } : undefined);
-    const blob = await new Promise(r => canvas.toBlob(r));
-    const name = `Help_Eng_${String(i+1).padStart(2,'0')}${suffix}.png`;
-    zip.file(name, blob);
+    const pg = S.pages[i];
+    const isSetting = pg.group === 'SETTING INFORMATION';
+
+    if (isSetting && !textOnly) {
+      // ── SETTING INFORMATION 頁：循環 3 個 trigger 各匯出一張 (v1.6.29) ──
+      const triggers = [
+        { mode: 'BET',  suffix: '_BetTrigger' },
+        { mode: 'LINE', suffix: '_LineTrigger' },
+        { mode: 'NONE', suffix: '_NoneTrigger' },
+      ];
+      for (const t of triggers) {
+        outIdx++;
+        S.settingTriggerMode = t.mode;
+        setStatus(`渲染 SETTING (${t.mode})...`);
+        renderPage(ctx, pg);
+        const blob = await new Promise(r => canvas.toBlob(r));
+        const name = `Help_Page_${String(outIdx).padStart(2,'0')}${t.suffix}.png`;
+        zip.file(name, blob);
+      }
+    } else {
+      outIdx++;
+      setStatus(`渲染 ${i+1}/${S.pages.length}...`);
+      renderPage(ctx, pg, textOnly ? { textOnly: true } : undefined);
+      const blob = await new Promise(r => canvas.toBlob(r));
+      const name = `Help_Page_${String(outIdx).padStart(2,'0')}.png`;
+      zip.file(name, blob);
+    }
   }
+
+  S.settingTriggerMode = savedTriggerMode;  // 還原模式
   renderPage(ctx, S.pages[S.cur]); refreshPageInfo();
   const zipBlob = await zip.generateAsync({ type: 'blob' });
-  const zipName = textOnly ? 'Help_All_TextOnly.zip' : 'Help_All.zip';
+  const zipName = 'Help_All.zip';
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(zipBlob), download: zipName });
   a.click(); URL.revokeObjectURL(a.href);
-  setStatus(`全部 ${S.pages.length} 頁已打包匯出`);
+  setStatus(`全部 ${outIdx} 張已打包匯出`);
 }
 
 // ─────────────────────────────────────────────────────────
-// PSD EXPORT (v1.6.15)
+// PSD EXPORT (v1.6.29)
 // All pages combined into ONE single PSD with shared layers:
 //   ├── Page N (transparent content)
 //   ├── ...
@@ -3850,7 +4798,7 @@ function imageDataToCanvas(imageData) {
 
 function exportJSON() {
   if (!S.pages.length) { setStatus('無頁面可儲存'); return; }
-  const data = { version: '1.6.15', cfg: S.cfg, pages: S.pages, savedAt: new Date().toISOString() };
+  const data = { version: '1.6.29', cfg: S.cfg, pages: S.pages, savedAt: new Date().toISOString() };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `Help_Work_${Date.now()}.json` });
   a.click(); URL.revokeObjectURL(a.href);
@@ -3931,6 +4879,8 @@ function applySliders() {
   const togAreas = document.getElementById('togAreas');
   if (togSafe)  togSafe.checked  = !!S.cfg.showSafe;
   if (togAreas) togAreas.checked = !!S.cfg.showAreas;
+  // Sync table color picker (v1.6.29)
+  if (typeof _refreshTableColorUI === 'function') _refreshTableColorUI();
 }
 
 // ─────────────────────────────────────────────────────────
@@ -3938,6 +4888,7 @@ function applySliders() {
 // ─────────────────────────────────────────────────────────
 loadFromStorage();
 refreshPageInfo();
+_refreshReloadButtons();
 </script>
 <!-- ═══════════════════ DIFF PANEL ═══════════════════ -->
 <div id="diffOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:1000;overflow:auto">
